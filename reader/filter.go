@@ -2,8 +2,9 @@ package reader
 
 import (
 	"fmt"
-	"io"
 	"unicode"
+
+	"github.com/komkom/jsonc/json"
 )
 
 type TokenType int
@@ -31,19 +32,22 @@ type Filter struct {
 	outMinSize int
 	stack      []State
 	rootState  State
-	done       bool
-	err        error
+}
+
+func NewFilter(ring *Ring, outMinSize int, rootState State) *Filter {
+
+	return &Filter{ring: ring, outMinSize: outMinSize, rootState: rootState}
 }
 
 type baseState struct {
 	closed bool
 }
 
-func (b baseState) Close() {
+func (b *baseState) Close() {
 	b.closed = true
 }
 
-func (b baseState) Open() bool {
+func (b *baseState) Open() bool {
 	return !b.closed
 }
 
@@ -52,25 +56,27 @@ type RootState struct {
 	baseState
 }
 
-func (r RootState) Type() TokenType {
+func (r *RootState) Type() TokenType {
 	return Root
 }
 
-func (r RootState) Next(f *Filter) (err error) {
+func (r *RootState) Next(f *Filter) (err error) {
 
 	for {
 		ru := f.ring.Peek()
+
 		if ru == '{' {
+
 			f.pushOut(ru)
 			err = f.ring.Advance()
-			f.pushState(ObjectState{})
+			f.pushState(&ObjectState{})
 			return
 		}
 
 		if ru == '[' {
 			f.pushOut(ru)
 			err = f.ring.Advance()
-			f.pushState(ArrayState{})
+			f.pushState(&ArrayState{})
 			return
 		}
 
@@ -90,17 +96,19 @@ type KeyState struct {
 	baseState
 }
 
-func (o KeyState) Type() TokenType {
+func (o *KeyState) Type() TokenType {
 	return Key
 }
 
-func (r KeyState) Next(f *Filter) (err error) {
+func (r *KeyState) Next(f *Filter) (err error) {
 
 	var escaped bool
 	for {
 		ru := f.ring.Peek()
 
 		if !escaped && ru == '"' {
+
+			//f.closeState()
 			r.Close()
 
 			f.pushOut(ru)
@@ -124,32 +132,68 @@ func (r KeyState) Next(f *Filter) (err error) {
 }
 
 type ValueState struct {
-	KeyState
+	baseState
 }
 
-func (o ValueState) Type() TokenType {
+func (v *ValueState) Type() TokenType {
 	return Value
+}
+
+func (v *ValueState) Next(f *Filter) (err error) {
+
+	var escaped bool
+	for {
+		ru := f.ring.Peek()
+
+		if !escaped && ru == '"' {
+			//f.closeState()
+			v.Close()
+
+			f.pushOut(ru)
+			err = f.ring.Advance()
+			return
+		}
+
+		if ru == '\\' {
+			escaped = true
+		}
+
+		f.pushOut(ru)
+
+		err = f.ring.Advance()
+		if err != nil {
+			return
+		}
+	}
+
+	return
 }
 
 type KeyNoQuoteState struct {
 	baseState
 }
 
-func (o KeyNoQuoteState) Type() TokenType {
+func (o *KeyNoQuoteState) Type() TokenType {
 	return KeyNoQuote
 }
 
-func (r KeyNoQuoteState) Next(f *Filter) (err error) {
+func (r *KeyNoQuoteState) Next(f *Filter) (err error) {
 
 	var escaped bool
+	first := true
 	for {
 		ru := f.ring.Peek()
 
-		if !escaped && ru == ':' {
-			r.Close()
+		if first {
+			f.pushOut('"')
+			first = false
+		}
 
-			f.pushOut(ru)
-			err = f.ring.Advance()
+		if !escaped && ru == ':' {
+
+			f.pushOut('"')
+			r.Close()
+			f.ring.Pop()
 			return
 		}
 
@@ -172,24 +216,45 @@ type ValueNoQuoteState struct {
 	baseState
 }
 
-func (o ValueNoQuoteState) Type() TokenType {
+func (o *ValueNoQuoteState) Type() TokenType {
 	return ValueNoQuote
 }
 
-func (r ValueNoQuoteState) Next(f *Filter) (err error) {
+func (r *ValueNoQuoteState) Next(f *Filter) (err error) {
 
 	var escaped bool
 	var cval []byte
 
+	renderValue := func() {
+
+		r.Close()
+
+		// check if quotes are not needed
+		v := string(cval)
+		if json.IsNumber(v) ||
+			v == `true` ||
+			v == `false` ||
+			v == `null` {
+
+			f.pushBytes(cval)
+			return
+		}
+
+		// quote the value
+		f.pushOut('"')
+		f.pushBytes(cval)
+		f.pushOut('"')
+	}
+
 	for {
 		ru := f.ring.Peek()
 
-		if !escaped && unicode.IsSpace(ru) {
-			// validate
-			// insert " if needed
-			r.Close()
-			err = f.ring.Advance()
-			return
+		if !escaped {
+
+			if unicode.IsSpace(ru) || ru == ',' || ru == '}' || ru == ']' {
+				renderValue()
+				return
+			}
 		}
 
 		if ru == '\\' {
@@ -211,15 +276,16 @@ type ObjectState struct {
 	baseState
 }
 
-func (o ObjectState) Type() TokenType {
+func (o *ObjectState) Type() TokenType {
 	return Object
 }
 
-func (r ObjectState) Next(f *Filter) (err error) {
+func (o *ObjectState) Next(f *Filter) (err error) {
 
 	s := f.peekState()
 
 	var hasKeyDelimiter bool
+	var hasComma bool
 	for {
 		ru := f.ring.Peek()
 
@@ -239,30 +305,31 @@ func (r ObjectState) Next(f *Filter) (err error) {
 					if ru == '[' {
 						f.pushOut(ru)
 						err = f.ring.Advance()
-						f.pushState(ArrayState{})
+						f.pushState(&ArrayState{})
 						return
 					}
 
 					if ru == '{' {
 						f.pushOut(ru)
 						err = f.ring.Advance()
-						f.pushState(ObjectState{})
+						f.pushState(&ObjectState{})
 						return
 					}
 
 					if ru == '"' {
 						f.pushOut(ru)
 						err = f.ring.Advance()
-						f.pushState(KeyState{})
+						f.pushState(&ValueState{})
 						return
 					}
 
-					f.pushState(KeyNoQuoteState{})
+					f.pushState(&ValueNoQuoteState{})
 					return
 				}
 			}
 
 			if ru == ':' {
+
 				if hasKeyDelimiter {
 					err = fmt.Errorf("invalid : at pos %v", f.ring.Position())
 					return
@@ -272,9 +339,55 @@ func (r ObjectState) Next(f *Filter) (err error) {
 				f.pushOut(ru)
 			}
 
-			break
 		case Value, ValueNoQuote, Object, Array:
-			break
+
+			if ru == ',' {
+				if hasComma {
+					err = fmt.Errorf("invalid comma at pos %v", f.ring.Position())
+					return
+				}
+				hasComma = true
+				break
+			}
+
+			if ru == '}' {
+
+				//f.closeState()
+				o.Close()
+				f.pushOut(ru)
+				err = f.ring.Advance()
+				return
+			}
+
+			if ru == '"' {
+				/*
+					if s.Type() == Value || s.Type() == ValueNoQuote {
+						f.pushOut(',')
+					}
+				*/
+
+				if s.Type() == Object && !s.Open() {
+					f.pushOut(',')
+				}
+
+				if s.Type() != Object {
+					f.pushOut(',')
+				}
+
+				f.pushOut(ru)
+				err = f.ring.Advance()
+				f.pushState(&KeyState{})
+				return
+			}
+
+			if !unicode.IsSpace(ru) {
+
+				if s.Type() == Value || s.Type() == ValueNoQuote {
+					f.pushOut(',')
+				}
+				f.pushState(&KeyNoQuoteState{})
+				return
+			}
 		}
 
 		err = f.ring.Advance()
@@ -290,15 +403,21 @@ type ArrayState struct {
 	baseState
 }
 
-func (o ArrayState) Type() TokenType {
-	return Object
+func (o *ArrayState) Type() TokenType {
+	return Array
 }
 
-func (r ArrayState) Next(f *Filter) (err error) {
+func (r *ArrayState) Next(f *Filter) (err error) {
+
+	s := f.peekState()
 
 	var hasComma bool
 	for {
 		ru := f.ring.Peek()
+
+		if unicode.IsSpace(ru) {
+			goto next
+		}
 
 		if ru == ',' {
 			if hasComma {
@@ -306,31 +425,34 @@ func (r ArrayState) Next(f *Filter) (err error) {
 				return
 			}
 			hasComma = true
-			continue
+			goto next
 		}
 
 		if ru == ']' {
 			f.pushOut(ru)
+			//f.closeState()
 			r.Close()
 			err = f.ring.Advance()
 			return
 		}
 
-		if hasComma {
+		if hasComma || (s.Type() == Array && s.Open()) {
+
+			if hasComma {
+				f.pushOut(',')
+			}
 
 			if ru == '[' {
-				f.pushOut(',')
 				f.pushOut(ru)
 				err = f.ring.Advance()
-				f.pushState(ArrayState{})
+				f.pushState(&ArrayState{})
 				return
 			}
 
 			if ru == '{' {
-				f.pushOut(',')
 				f.pushOut(ru)
 				err = f.ring.Advance()
-				f.pushState(ObjectState{})
+				f.pushState(&ObjectState{})
 				return
 			}
 
@@ -338,17 +460,18 @@ func (r ArrayState) Next(f *Filter) (err error) {
 
 				f.pushOut(ru)
 				err = f.ring.Advance()
-				// TODO value state
+				f.pushState(&ValueState{})
 				return
 			}
 
-			if !unicode.IsSpace(ru) {
-
-				// TODO push non quote value
-				return
-			}
+			f.pushState(&ValueNoQuoteState{})
+			return
 		}
 
+		err = fmt.Errorf("invalid character %v at pos %v", string(ru), f.ring.Position())
+		return
+
+	next:
 		err = f.ring.Advance()
 		if err != nil {
 			return
@@ -360,46 +483,43 @@ func (r ArrayState) Next(f *Filter) (err error) {
 
 func (f *Filter) Read(p []byte) (n int, err error) {
 
-	tor := f.outMinSize
-	if tor > len(p) {
-		tor = len(p)
+	n = f.outMinSize
+	if n > len(p) {
+		n = len(p)
 	}
 
-	for tor > len(f.outbuf) {
-
-		if f.done {
-			n = 0
-			err = io.EOF
-		}
+	for n > len(f.outbuf) {
 
 		err = f.fill()
 		if err != nil {
-			return
+			break
 		}
 	}
 
-	for i := 0; i < tor; i++ {
+	if len(f.outbuf) < n {
+		n = len(f.outbuf)
+	}
+
+	for i := 0; i < n; i++ {
 		p[i] = f.outbuf[i]
 	}
 
-	f.outbuf = f.outbuf[tor:]
-
-	if f.done {
-		err = io.EOF
-	}
+	f.outbuf = f.outbuf[n:]
 
 	return
 }
 
 func (f *Filter) fill() error {
 
-	if f.done {
-		return nil
+	state, err := f.peekFirstOpenState()
+	if err != nil {
+		return err
 	}
 
-	state := f.peekState()
-
 	for f.outMinSize > len(f.outbuf) {
+
+		f.printStack()
+		fmt.Printf("__state %v\n", state.Type())
 
 		err := state.Next(f)
 
@@ -407,26 +527,16 @@ func (f *Filter) fill() error {
 			return err
 		}
 
-		// if the current state is closed get next open one.
-		if !f.peekState().Open() {
-
-			/*
-				err := f.closeState(state.Type())
-				if err != nil {
-					return err
-				}
-			*/
-
-			state, err = f.openState()
-			if err != nil {
-				return err
-			}
+		state, err = f.peekFirstOpenState()
+		if err != nil {
+			return err
 		}
 	}
 
 	return nil
 }
 
+/*
 func (f *Filter) closeState(stateType TokenType) error {
 
 	for i := len(f.stack) - 1; i >= 0; i-- {
@@ -445,7 +555,9 @@ func (f *Filter) closeState(stateType TokenType) error {
 
 	return fmt.Errorf("incorrect stack")
 }
+*/
 
+/*
 func (f *Filter) openState() (s State, err error) {
 
 	for i := len(f.stack) - 1; i >= 0; i-- {
@@ -459,6 +571,7 @@ func (f *Filter) openState() (s State, err error) {
 	err = fmt.Errorf("no open state")
 	return
 }
+*/
 
 func (f *Filter) peekState() State {
 	state := f.rootState
@@ -468,6 +581,24 @@ func (f *Filter) peekState() State {
 	return state
 }
 
+func (f *Filter) peekFirstOpenState() (s State, err error) {
+
+	if len(f.stack) == 0 {
+		s = f.rootState
+		return
+	}
+
+	for i := len(f.stack) - 1; i >= 0; i-- {
+		s = f.stack[i]
+		if s.Open() {
+			return
+		}
+	}
+
+	err = fmt.Errorf("no open states found")
+	return
+}
+
 func (f *Filter) pushState(s State) {
 	f.stack = append(f.stack, s)
 }
@@ -475,3 +606,32 @@ func (f *Filter) pushState(s State) {
 func (f *Filter) pushOut(r rune) {
 	f.outbuf = append(f.outbuf, byte(r))
 }
+
+func (f *Filter) pushBytes(b []byte) {
+	f.outbuf = append(f.outbuf, b...)
+}
+
+func (f *Filter) printStack() {
+	for _, s := range f.stack {
+		fmt.Printf("(type: %v open %v) ", s.Type(), s.Open())
+	}
+	fmt.Println(``)
+}
+
+/*
+func (f *Filter) closeState() error {
+	if len(f.stack) == 0 {
+		f.rootState.Close()
+		return nil
+	}
+
+	for i := len(f.stack) - 1; i >= 0; i-- {
+		s := f.stack[i]
+		if s.Open() {
+			s.Close()
+			return nil
+		}
+	}
+
+	return fmt.Errorf("no state to close")
+}o*/
