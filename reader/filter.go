@@ -32,11 +32,21 @@ type Filter struct {
 	outMinSize int
 	stack      []State
 	rootState  State
+	done       bool
+	err        error
 }
 
 func NewFilter(ring *Ring, outMinSize int, rootState State) *Filter {
 
 	return &Filter{ring: ring, outMinSize: outMinSize, rootState: rootState}
+}
+
+func (f *Filter) Done() bool {
+	return f.done
+}
+
+func (f *Filter) Error() error {
+	return f.err
 }
 
 type baseState struct {
@@ -51,7 +61,6 @@ func (b *baseState) Open() bool {
 	return !b.closed
 }
 
-// root state
 type RootState struct {
 	baseState
 }
@@ -108,7 +117,6 @@ func (r *KeyState) Next(f *Filter) (err error) {
 
 		if !escaped && ru == '"' {
 
-			//f.closeState()
 			r.Close()
 
 			f.pushOut(ru)
@@ -146,7 +154,6 @@ func (v *ValueState) Next(f *Filter) (err error) {
 		ru := f.ring.Peek()
 
 		if !escaped && ru == '"' {
-			//f.closeState()
 			v.Close()
 
 			f.pushOut(ru)
@@ -193,7 +200,6 @@ func (r *KeyNoQuoteState) Next(f *Filter) (err error) {
 
 			f.pushOut('"')
 			r.Close()
-			f.ring.Pop()
 			return
 		}
 
@@ -289,43 +295,45 @@ func (o *ObjectState) Next(f *Filter) (err error) {
 	for {
 		ru := f.ring.Peek()
 
+		if unicode.IsSpace(ru) {
+			goto next
+		}
+
 		switch s.Type() {
 		case Key, KeyNoQuote:
 
 			if hasKeyDelimiter {
 
-				if !unicode.IsSpace(ru) {
-					hasKeyDelimiter = false
+				hasKeyDelimiter = false
 
-					if ru == ',' {
-						err = fmt.Errorf("invalid comma at pos %v", f.ring.Position())
-						return
-					}
-
-					if ru == '[' {
-						f.pushOut(ru)
-						err = f.ring.Advance()
-						f.pushState(&ArrayState{})
-						return
-					}
-
-					if ru == '{' {
-						f.pushOut(ru)
-						err = f.ring.Advance()
-						f.pushState(&ObjectState{})
-						return
-					}
-
-					if ru == '"' {
-						f.pushOut(ru)
-						err = f.ring.Advance()
-						f.pushState(&ValueState{})
-						return
-					}
-
-					f.pushState(&ValueNoQuoteState{})
+				if ru == ',' {
+					err = fmt.Errorf("invalid comma at pos %v", f.ring.Position())
 					return
 				}
+
+				if ru == '[' {
+					f.pushOut(ru)
+					err = f.ring.Advance()
+					f.pushState(&ArrayState{})
+					return
+				}
+
+				if ru == '{' {
+					f.pushOut(ru)
+					err = f.ring.Advance()
+					f.pushState(&ObjectState{})
+					return
+				}
+
+				if ru == '"' {
+					f.pushOut(ru)
+					err = f.ring.Advance()
+					f.pushState(&ValueState{})
+					return
+				}
+
+				f.pushState(&ValueNoQuoteState{})
+				return
 			}
 
 			if ru == ':' {
@@ -337,7 +345,11 @@ func (o *ObjectState) Next(f *Filter) (err error) {
 
 				hasKeyDelimiter = true
 				f.pushOut(ru)
+				break
 			}
+
+			err = fmt.Errorf("error parsing object at pos %v with %v", f.ring.Position(), string(ru))
+			return
 
 		case Value, ValueNoQuote, Object, Array:
 
@@ -352,7 +364,6 @@ func (o *ObjectState) Next(f *Filter) (err error) {
 
 			if ru == '}' {
 
-				//f.closeState()
 				o.Close()
 				f.pushOut(ru)
 				err = f.ring.Advance()
@@ -360,11 +371,6 @@ func (o *ObjectState) Next(f *Filter) (err error) {
 			}
 
 			if ru == '"' {
-				/*
-					if s.Type() == Value || s.Type() == ValueNoQuote {
-						f.pushOut(',')
-					}
-				*/
 
 				if s.Type() == Object && !s.Open() {
 					f.pushOut(',')
@@ -380,16 +386,14 @@ func (o *ObjectState) Next(f *Filter) (err error) {
 				return
 			}
 
-			if !unicode.IsSpace(ru) {
-
-				if s.Type() == Value || s.Type() == ValueNoQuote {
-					f.pushOut(',')
-				}
-				f.pushState(&KeyNoQuoteState{})
-				return
+			if s.Type() == Value || s.Type() == ValueNoQuote {
+				f.pushOut(',')
 			}
+			f.pushState(&KeyNoQuoteState{})
+			return
 		}
 
+	next:
 		err = f.ring.Advance()
 		if err != nil {
 			return
@@ -430,7 +434,6 @@ func (r *ArrayState) Next(f *Filter) (err error) {
 
 		if ru == ']' {
 			f.pushOut(ru)
-			//f.closeState()
 			r.Close()
 			err = f.ring.Advance()
 			return
@@ -483,6 +486,11 @@ func (r *ArrayState) Next(f *Filter) (err error) {
 
 func (f *Filter) Read(p []byte) (n int, err error) {
 
+	if f.err != nil {
+		err = f.err
+		return
+	}
+
 	n = f.outMinSize
 	if n > len(p) {
 		n = len(p)
@@ -505,6 +513,13 @@ func (f *Filter) Read(p []byte) (n int, err error) {
 	}
 
 	f.outbuf = f.outbuf[n:]
+
+	s, e := f.peekFirstOpenState()
+	if e == nil && s.Type() == Root {
+		f.done = true
+	}
+
+	f.err = err
 
 	return
 }
@@ -536,43 +551,6 @@ func (f *Filter) fill() error {
 	return nil
 }
 
-/*
-func (f *Filter) closeState(stateType TokenType) error {
-
-	for i := len(f.stack) - 1; i >= 0; i-- {
-
-		s := f.stack[i]
-
-		if s.Type() == stateType {
-			s.Close()
-			return nil
-		}
-
-		if s.Open() {
-			break
-		}
-	}
-
-	return fmt.Errorf("incorrect stack")
-}
-*/
-
-/*
-func (f *Filter) openState() (s State, err error) {
-
-	for i := len(f.stack) - 1; i >= 0; i-- {
-
-		s = f.stack[i]
-		if s.Open() {
-			return
-		}
-	}
-
-	err = fmt.Errorf("no open state")
-	return
-}
-*/
-
 func (f *Filter) peekState() State {
 	state := f.rootState
 	if len(f.stack) > 0 {
@@ -595,7 +573,7 @@ func (f *Filter) peekFirstOpenState() (s State, err error) {
 		}
 	}
 
-	err = fmt.Errorf("no open states found")
+	s = f.rootState
 	return
 }
 
@@ -617,21 +595,3 @@ func (f *Filter) printStack() {
 	}
 	fmt.Println(``)
 }
-
-/*
-func (f *Filter) closeState() error {
-	if len(f.stack) == 0 {
-		f.rootState.Close()
-		return nil
-	}
-
-	for i := len(f.stack) - 1; i >= 0; i-- {
-		s := f.stack[i]
-		if s.Open() {
-			s.Close()
-			return nil
-		}
-	}
-
-	return fmt.Errorf("no state to close")
-}o*/

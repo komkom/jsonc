@@ -53,13 +53,13 @@ func TestTest(t *testing.T) {
 
 func TestFilter(t *testing.T) {
 
-	//s := `{ t:ttestt,x:x, z:[ "test" ]      }`
+	s := `{ t:ttestt,x:x, z:[ "test" ]      }`
 
-	//s := `{ z:[ "test", test2, ["x"], {"x":"x"} ]      }`
+	//s := `{ z:[ "test", test2, ["x"], {"x":"x", x2:[uu]}, null ]      }`
 
 	//s := `[     ]`
 	//s := `[{x:x}, [u], "test"]`
-	s := `{ k1:v, k2:v2}`
+	//s := `{   x:   y   }   `
 	b := strings.NewReader(s)
 
 	ring, err := NewRing(8, 4, func() (r rune, size int, err error) {
@@ -76,8 +76,12 @@ func TestFilter(t *testing.T) {
 
 	n, err := buf.ReadFrom(f)
 	if err != nil {
-		fmt.Printf("err: %v", err.Error())
+		fmt.Printf("err: %v\n", err.Error())
 		return
+	}
+
+	if !f.Done() {
+		fmt.Printf("json could not be parsed %v\n", f.Error())
 	}
 
 	fmt.Printf("read %v out: \n%s\n", n, buf.Bytes())
