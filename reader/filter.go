@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"unicode"
 
-	log "github.com/Sirupsen/logrus"
-
 	"github.com/komkom/jsonc/json"
 )
 
@@ -13,7 +11,7 @@ type TokenType int
 
 type State interface {
 	Type() TokenType
-	Next(f *Filter) (err error)
+	Next(f *Filter) (err *errorf)
 	Close()
 	Open() bool
 }
@@ -37,7 +35,7 @@ type Filter struct {
 	stack      []State
 	rootState  State
 	done       bool
-	err        error
+	err        *errorf
 }
 
 func NewFilter(ring *Ring, outMinSize int, rootState State) *Filter {
@@ -45,11 +43,18 @@ func NewFilter(ring *Ring, outMinSize int, rootState State) *Filter {
 	return &Filter{ring: ring, outMinSize: outMinSize, rootState: rootState}
 }
 
+func (f *Filter) Clear() {
+	f.outbuf = nil
+	f.stack = nil
+	f.done = false
+	f.err = nil
+}
+
 func (f *Filter) Done() bool {
 	return f.done
 }
 
-func (f *Filter) Error() error {
+func (f *Filter) Error() *errorf {
 	return f.err
 }
 
@@ -73,7 +78,7 @@ func (r *RootState) Type() TokenType {
 	return Root
 }
 
-func (r *RootState) Next(f *Filter) (err error) {
+func (r *RootState) Next(f *Filter) (err *errorf) {
 
 	for {
 		ru := f.ring.Peek()
@@ -105,7 +110,7 @@ func (r *RootState) Next(f *Filter) (err error) {
 		}
 
 		if !unicode.IsSpace(ru) {
-			err = fmt.Errorf("invalid first character: %v", string(ru))
+			err = errorF("invalid first character: %v", -1, string(ru))
 			return
 		}
 
@@ -124,7 +129,7 @@ func (o *KeyState) Type() TokenType {
 	return Key
 }
 
-func (r *KeyState) Next(f *Filter) (err error) {
+func (r *KeyState) Next(f *Filter) (err *errorf) {
 
 	var escaped bool
 	for {
@@ -162,7 +167,7 @@ func (v *ValueState) Type() TokenType {
 	return Value
 }
 
-func (v *ValueState) Next(f *Filter) (err error) {
+func (v *ValueState) Next(f *Filter) (err *errorf) {
 
 	var escaped bool
 	for {
@@ -199,7 +204,7 @@ func (o *KeyNoQuoteState) Type() TokenType {
 	return KeyNoQuote
 }
 
-func (r *KeyNoQuoteState) Next(f *Filter) (err error) {
+func (r *KeyNoQuoteState) Next(f *Filter) (err *errorf) {
 
 	var escaped bool
 	first := true
@@ -241,7 +246,7 @@ func (o *ValueNoQuoteState) Type() TokenType {
 	return ValueNoQuote
 }
 
-func (r *ValueNoQuoteState) Next(f *Filter) (err error) {
+func (r *ValueNoQuoteState) Next(f *Filter) (err *errorf) {
 
 	var escaped bool
 	var cval []byte
@@ -301,7 +306,7 @@ func (o *ObjectState) Type() TokenType {
 	return Object
 }
 
-func (o *ObjectState) Next(f *Filter) (err error) {
+func (o *ObjectState) Next(f *Filter) (err *errorf) {
 
 	s := f.peekState()
 
@@ -333,7 +338,7 @@ func (o *ObjectState) Next(f *Filter) (err error) {
 				hasKeyDelimiter = false
 
 				if ru == ',' {
-					err = fmt.Errorf("invalid comma at pos %v", f.ring.Position())
+					err = errorF("invalid comma at pos %v", f.ring.Position())
 					return
 				}
 
@@ -365,7 +370,7 @@ func (o *ObjectState) Next(f *Filter) (err error) {
 			if ru == ':' {
 
 				if hasKeyDelimiter {
-					err = fmt.Errorf("invalid : at pos %v", f.ring.Position())
+					err = errorF("invalid : at pos %v", f.ring.Position())
 					return
 				}
 
@@ -374,14 +379,14 @@ func (o *ObjectState) Next(f *Filter) (err error) {
 				break
 			}
 
-			err = fmt.Errorf("error parsing object at pos %v with %v", f.ring.Position(), string(ru))
+			err = errorF("error parsing object %v", f.ring.Position())
 			return
 
 		case Value, ValueNoQuote, Object, Array:
 
 			if ru == ',' {
 				if hasComma {
-					err = fmt.Errorf("invalid comma at pos %v", f.ring.Position())
+					err = errorF("invalid comma", f.ring.Position())
 					return
 				}
 				hasComma = true
@@ -437,7 +442,7 @@ func (o *ArrayState) Type() TokenType {
 	return Array
 }
 
-func (r *ArrayState) Next(f *Filter) (err error) {
+func (r *ArrayState) Next(f *Filter) (err *errorf) {
 
 	s := f.peekState()
 
@@ -462,7 +467,7 @@ func (r *ArrayState) Next(f *Filter) (err error) {
 
 		if ru == ',' {
 			if hasComma {
-				err = fmt.Errorf("invalid comma at pos %v", f.ring.Position())
+				err = errorF("invalid comma at pos %v", f.ring.Position())
 				return
 			}
 			hasComma = true
@@ -508,7 +513,7 @@ func (r *ArrayState) Next(f *Filter) (err error) {
 			return
 		}
 
-		err = fmt.Errorf("invalid character %v at pos %v", string(ru), f.ring.Position())
+		err = errorF("invalid character %v", f.ring.Position(), string(ru))
 		return
 
 	next:
@@ -521,7 +526,7 @@ func (r *ArrayState) Next(f *Filter) (err error) {
 	return
 }
 
-func dispatchComment(f *Filter) (shouldDispatch bool, err error) {
+func dispatchComment(f *Filter) (shouldDispatch bool, err *errorf) {
 
 	ru := f.ring.Peek()
 
@@ -546,7 +551,7 @@ func dispatchComment(f *Filter) (shouldDispatch bool, err error) {
 			return
 		}
 
-		err = fmt.Errorf("invalid character %v at pos %v", string(ru), f.ring.Position())
+		err = errorF("invalid character %v at pos %v", f.ring.Position(), string(ru))
 		return
 	}
 
@@ -561,7 +566,7 @@ func (c *CommentState) Type() TokenType {
 	return Comment
 }
 
-func (c *CommentState) Next(f *Filter) (err error) {
+func (c *CommentState) Next(f *Filter) (err *errorf) {
 
 	for {
 		ru := f.ring.Peek()
@@ -589,7 +594,7 @@ func (c *CommentMultiLineState) Type() TokenType {
 	return CommentMultiLine
 }
 
-func (c *CommentMultiLineState) Next(f *Filter) (err error) {
+func (c *CommentMultiLineState) Next(f *Filter) (err *errorf) {
 
 	var escaped bool
 	for {
@@ -632,6 +637,8 @@ func (f *Filter) Read(p []byte) (n int, err error) {
 		return
 	}
 
+	var cerr *errorf
+
 	n = f.outMinSize
 	if n > len(p) {
 		n = len(p)
@@ -639,8 +646,9 @@ func (f *Filter) Read(p []byte) (n int, err error) {
 
 	for n > len(f.outbuf) {
 
-		err = f.fill()
-		if err != nil {
+		cerr = f.fill()
+		if cerr != nil {
+			err = cerr
 			break
 		}
 	}
@@ -660,12 +668,12 @@ func (f *Filter) Read(p []byte) (n int, err error) {
 		f.done = true
 	}
 
-	f.err = err
+	f.err = cerr
 
 	return
 }
 
-func (f *Filter) fill() error {
+func (f *Filter) fill() *errorf {
 
 	state, err := f.peekFirstOpenState()
 	if err != nil {
@@ -674,8 +682,8 @@ func (f *Filter) fill() error {
 
 	for f.outMinSize > len(f.outbuf) {
 
-		f.printStack()
-		log.Debugf("__state %v\n", state.Type())
+		//f.printStack()
+		//fmt.Printf("__state %v\n", state.Type())
 
 		err := state.Next(f)
 
@@ -700,7 +708,7 @@ func (f *Filter) peekState() State {
 	return state
 }
 
-func (f *Filter) peekFirstOpenState() (s State, err error) {
+func (f *Filter) peekFirstOpenState() (s State, err *errorf) {
 
 	if len(f.stack) == 0 {
 		s = f.rootState
