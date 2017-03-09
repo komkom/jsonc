@@ -6,50 +6,6 @@ import (
 	"testing"
 )
 
-func backtrace(r *Ring) (b string) {
-
-	for {
-		b += string(r.Peek())
-		err := r.Pop()
-		if err != nil {
-			break
-		}
-	}
-
-	return
-}
-
-/*
-func TestTest(t *testing.T) {
-
-	s := `some test st uu tt`
-	b := strings.NewReader(s)
-
-	ring, err := NewRing(8, 4, func() (r rune, size int, err error) {
-		return b.ReadRune()
-	})
-
-	if err != nil {
-		t.Fatalf("error: %v", err.Error())
-	}
-
-	for {
-		ru := ring.Peek()
-
-		fmt.Printf("%s", string(ru))
-
-		err := ring.Advance()
-		if err == io.EOF {
-			fmt.Println(``)
-			break
-		}
-	}
-
-	v := backtrace(ring)
-	fmt.Printf("b: %v", v)
-}
-*/
-
 type TestJson struct {
 	JsonCString           string
 	ExpectedJsonString    string
@@ -92,7 +48,7 @@ func JsonData() []TestJson {
 			JsonCString: ` [ 
 			x, y, z, 
 			x:x, 
-				[ "t",   "t",   
+				[ "t", /* some test */  "t",   
 					{
 						j:i, // test comment
 						o:o,
@@ -102,6 +58,15 @@ func JsonData() []TestJson {
 				] 
 			]`,
 			ExpectedJsonString: `["x","y","z","x:x",["t","t",{"j":"i","o":"o","i":[1,2,3,4,5]}]]`,
+		},
+		TestJson{
+			JsonCString: `{ 1:1, /* */ 2:2,3:3,4:4,5:5}`,
+		},
+		TestJson{
+			JsonCString: `{ 1:1, /* */ 2: /* some other comment */ 2,
+			/* another comment */ 7: [1,2,3,4,5,6],
+			3:3,4:4,5:5 /*hmm*/ ,} // test comment at the end`,
+			ExpectedJsonString: `{"1":1,"2":2,"7":[1,2,3,4,5,6],"3":3,"4":4,"5":5}`,
 		},
 	}
 }
@@ -161,46 +126,8 @@ func TestJsonParser2(t *testing.T) {
 		if d.ExpectedJsonString != `` {
 
 			if d.ExpectedJsonString != string(buf.Bytes()) {
-				t.Fatalf("idx: %v expected json does not match")
+				t.Fatalf("idx: %v expected json does not match", idx)
 			}
 		}
 	}
 }
-
-/*
-func TestJsonParser(t *testing.T) {
-
-	s := `[ x ]`
-
-	//s := `{ z:[ "test", test2, ["x"], {"x":"x", x2:[uu]}, null ]      }`
-
-	//s := `[     ]`
-	//s := `[{x:x}, [u], "test"]`
-	//s := `{   x:   y   }   `
-	b := strings.NewReader(s)
-
-	ring, err := NewRing(8, 4, func() (r rune, size int, err error) {
-		return b.ReadRune()
-	})
-
-	if err != nil {
-		t.Fatalf("error: %v", err.Error())
-	}
-
-	f := NewFilter(ring, 16, &RootState{})
-
-	buf := &bytes.Buffer{}
-
-	n, err := buf.ReadFrom(f)
-	if err != nil {
-		fmt.Printf("err: %v\n", err.Error())
-		return
-	}
-
-	if !f.Done() {
-		fmt.Printf("json could not be parsed %v\n", f.Error())
-	}
-
-	fmt.Printf("read %v out: \n%s\n", n, buf.Bytes())
-}
-*/

@@ -2,6 +2,7 @@ package reader
 
 import (
 	"fmt"
+	"io"
 	"unicode"
 
 	"github.com/komkom/jsonc/json"
@@ -300,6 +301,8 @@ func (r *ValueNoQuoteState) Next(f *Filter) (err *errorf) {
 
 type ObjectState struct {
 	baseState
+	hasComma        bool
+	hasKeyDelimiter bool
 }
 
 func (o *ObjectState) Type() TokenType {
@@ -310,8 +313,15 @@ func (o *ObjectState) Next(f *Filter) (err *errorf) {
 
 	s := f.peekState()
 
-	var hasKeyDelimiter bool
-	var hasComma bool
+	var dontResetState bool
+
+	defer func() {
+		if !dontResetState {
+			o.hasComma = false
+			o.hasKeyDelimiter = false
+		}
+	}()
+
 	for {
 		ru := f.ring.Peek()
 
@@ -323,6 +333,7 @@ func (o *ObjectState) Next(f *Filter) (err *errorf) {
 		}
 
 		if dispatch {
+			dontResetState = true
 			return
 		}
 
@@ -333,12 +344,12 @@ func (o *ObjectState) Next(f *Filter) (err *errorf) {
 		switch s.Type() {
 		case Key, KeyNoQuote:
 
-			if hasKeyDelimiter {
+			if o.hasKeyDelimiter {
 
-				hasKeyDelimiter = false
+				o.hasKeyDelimiter = false
 
 				if ru == ',' {
-					err = errorF("invalid comma at pos %v", f.ring.Position())
+					err = errorF("invalid comma", f.ring.Position())
 					return
 				}
 
@@ -369,12 +380,12 @@ func (o *ObjectState) Next(f *Filter) (err *errorf) {
 
 			if ru == ':' {
 
-				if hasKeyDelimiter {
-					err = errorF("invalid : at pos %v", f.ring.Position())
+				if o.hasKeyDelimiter {
+					err = errorF("invalid character", f.ring.Position())
 					return
 				}
 
-				hasKeyDelimiter = true
+				o.hasKeyDelimiter = true
 				f.pushOut(ru)
 				break
 			}
@@ -385,11 +396,11 @@ func (o *ObjectState) Next(f *Filter) (err *errorf) {
 		case Value, ValueNoQuote, Object, Array:
 
 			if ru == ',' {
-				if hasComma {
+				if o.hasComma {
 					err = errorF("invalid comma", f.ring.Position())
 					return
 				}
-				hasComma = true
+				o.hasComma = true
 				break
 			}
 
@@ -436,6 +447,7 @@ func (o *ObjectState) Next(f *Filter) (err *errorf) {
 
 type ArrayState struct {
 	baseState
+	hasComma bool
 }
 
 func (o *ArrayState) Type() TokenType {
@@ -446,7 +458,15 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 
 	s := f.peekState()
 
-	var hasComma bool
+	var dontResetComma bool
+
+	defer func() {
+		if !dontResetComma {
+			r.hasComma = false
+		}
+	}()
+
+	//var hasComma bool
 	for {
 		ru := f.ring.Peek()
 
@@ -458,6 +478,7 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 		}
 
 		if dispatch {
+			dontResetComma = true
 			return
 		}
 
@@ -466,11 +487,11 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 		}
 
 		if ru == ',' {
-			if hasComma {
-				err = errorF("invalid comma at pos %v", f.ring.Position())
+			if r.hasComma {
+				err = errorF("invalid comma", f.ring.Position())
 				return
 			}
-			hasComma = true
+			r.hasComma = true
 			goto next
 		}
 
@@ -481,9 +502,9 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 			return
 		}
 
-		if hasComma || (s.Type() == Array && s.Open()) {
+		if r.hasComma || (s.Type() == Array && s.Open()) {
 
-			if hasComma {
+			if r.hasComma {
 				f.pushOut(',')
 			}
 
@@ -513,7 +534,7 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 			return
 		}
 
-		err = errorF("invalid character %v", f.ring.Position(), string(ru))
+		err = errorF("invalid character (1) %v", f.ring.Position(), string(ru))
 		return
 
 	next:
@@ -551,7 +572,7 @@ func dispatchComment(f *Filter) (shouldDispatch bool, err *errorf) {
 			return
 		}
 
-		err = errorF("invalid character %v at pos %v", f.ring.Position(), string(ru))
+		err = errorF("invalid character (2) %v", f.ring.Position(), string(ru))
 		return
 	}
 
@@ -578,7 +599,12 @@ func (c *CommentState) Next(f *Filter) (err *errorf) {
 		}
 
 		err = f.ring.Advance()
+
 		if err != nil {
+			if err.error == io.EOF {
+				f.popState()
+			}
+
 			return
 		}
 	}

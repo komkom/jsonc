@@ -13,7 +13,11 @@ func cerror(err error) *errorf {
 
 func errorF(formatter string, position int, args ...interface{}) *errorf {
 	if position > 0 {
-		return &errorf{fmt.Errorf("pos: %v "+formatter, position, args), position}
+
+		jargs := []interface{}{position}
+		jargs = append(jargs, args...)
+
+		return &errorf{fmt.Errorf("pos: %v "+formatter, jargs...), position}
 	}
 
 	return &errorf{fmt.Errorf(formatter, args), position}
