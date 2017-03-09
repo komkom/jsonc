@@ -37,11 +37,12 @@ type Filter struct {
 	rootState  State
 	done       bool
 	err        *errorf
+	format     bool
 }
 
-func NewFilter(ring *Ring, outMinSize int, rootState State) *Filter {
+func NewFilter(ring *Ring, outMinSize int, rootState State, format bool) *Filter {
 
-	return &Filter{ring: ring, outMinSize: outMinSize, rootState: rootState}
+	return &Filter{ring: ring, outMinSize: outMinSize, rootState: rootState, format: format}
 }
 
 func (f *Filter) Clear() {
@@ -407,6 +408,8 @@ func (o *ObjectState) Next(f *Filter) (err *errorf) {
 			if ru == '}' {
 
 				o.Close()
+				f.newLine()
+
 				f.pushOut(ru)
 				err = f.ring.Advance()
 				return
@@ -424,6 +427,7 @@ func (o *ObjectState) Next(f *Filter) (err *errorf) {
 
 				f.pushOut(ru)
 				err = f.ring.Advance()
+				f.newLine()
 				f.pushState(&KeyState{})
 				return
 			}
@@ -431,6 +435,7 @@ func (o *ObjectState) Next(f *Filter) (err *errorf) {
 			if s.Type() == Value || s.Type() == ValueNoQuote {
 				f.pushOut(',')
 			}
+			f.newLine()
 			f.pushState(&KeyNoQuoteState{})
 			return
 		}
@@ -466,7 +471,6 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 		}
 	}()
 
-	//var hasComma bool
 	for {
 		ru := f.ring.Peek()
 
@@ -496,8 +500,10 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 		}
 
 		if ru == ']' {
-			f.pushOut(ru)
+
 			r.Close()
+			f.newLine()
+			f.pushOut(ru)
 			err = f.ring.Advance()
 			return
 		}
@@ -507,6 +513,8 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 			if r.hasComma {
 				f.pushOut(',')
 			}
+
+			f.newLine()
 
 			if ru == '[' {
 				f.pushOut(ru)
@@ -761,6 +769,27 @@ func (f *Filter) popState() {
 		return
 	}
 	f.stack = f.stack[:len(f.stack)-1]
+}
+
+func (f *Filter) newLine() {
+
+	if f.format {
+
+		f.pushOut('\n')
+
+		idx := 0
+		for _, s := range f.stack {
+			if s.Open() && (s.Type() == Array || s.Type() == Object) {
+				idx++
+			}
+		}
+
+		for i := 0; i < idx; i++ {
+			f.pushOut(' ')
+
+			f.pushOut(' ')
+		}
+	}
 }
 
 func (f *Filter) pushOut(r rune) {

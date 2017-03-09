@@ -2,6 +2,8 @@ package reader
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -10,6 +12,71 @@ type TestJson struct {
 	JsonCString           string
 	ExpectedJsonString    string
 	ExpectedStringInError string
+}
+
+func Test2(t *testing.T) {
+
+	j := `{ "x":"v", "x":v}`
+
+	m := make(map[string]interface{})
+	err := json.Unmarshal([]byte(j), &m)
+
+	fmt.Printf("_____\n %v\nerr: %v\n", m, err)
+
+}
+
+func JsonToFormat() []string {
+
+	return []string{
+		`{ 
+/* some comment */
+	x:x
+	y:y
+	z:z
+	arr: [
+	1,2,3,4,5,6, {x:x, t:[x,13,5,6,7,{t:t},8,9]}		
+	], u:
+	{x:
+y}
+}
+`,
+	}
+
+}
+
+func TestFormatter(t *testing.T) {
+	data := JsonToFormat()
+
+	ring, err := NewRing(256, 64, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	f := NewFilter(ring, 256, &RootState{}, true)
+
+	for _, d := range data {
+
+		t.Log(`testing json`)
+
+		b := strings.NewReader(d)
+		ring.Clear(func() (r rune, size int, err *errorf) {
+			r, size, cerr := b.ReadRune()
+			if cerr != nil {
+				err = cerror(cerr)
+			}
+			return
+		})
+
+		f.Clear()
+
+		buf := &bytes.Buffer{}
+
+		buf.ReadFrom(f)
+
+		fmt.Printf("___formatted\n%s", buf.Bytes())
+
+	}
+
 }
 
 func JsonData() []TestJson {
@@ -75,12 +142,12 @@ func TestJsonParser2(t *testing.T) {
 
 	data := JsonData()
 
-	ring, err := NewRing(8, 4, nil)
+	ring, err := NewRing(256, 64, nil)
 	if err != nil {
 		panic(err)
 	}
 
-	f := NewFilter(ring, 16, &RootState{})
+	f := NewFilter(ring, 256, &RootState{}, false)
 
 	for idx, d := range data {
 
