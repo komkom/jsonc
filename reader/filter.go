@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"unicode"
 
+	log "github.com/Sirupsen/logrus"
+
 	"github.com/komkom/jsonc/json"
 )
 
@@ -534,7 +536,7 @@ func (f *Filter) fill() error {
 	for f.outMinSize > len(f.outbuf) {
 
 		f.printStack()
-		fmt.Printf("__state %v\n", state.Type())
+		log.Debugf("__state %v\n", state.Type())
 
 		err := state.Next(f)
 

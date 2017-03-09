@@ -53,7 +53,13 @@ func TestTest(t *testing.T) {
 
 func TestFilter(t *testing.T) {
 
-	s := `{ t:ttestt,x:x, z:[ "test" ]      }`
+	s := `
+	{ 
+		t:ttestt,
+		x:x, 
+		z:[ "test" ], 
+		o:123.65e+7,      
+	}`
 
 	//s := `{ z:[ "test", test2, ["x"], {"x":"x", x2:[uu]}, null ]      }`
 
