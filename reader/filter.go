@@ -26,6 +26,8 @@ const (
 	Value
 	ValueNoQuote
 	Array
+	Comment
+	CommentMultiLine
 )
 
 type Filter struct {
@@ -75,6 +77,17 @@ func (r *RootState) Next(f *Filter) (err error) {
 
 	for {
 		ru := f.ring.Peek()
+
+		// check if comments need to be dispatched
+		dispatch, cerr := dispatchComment(f)
+		if cerr != nil {
+			err = cerr
+			return
+		}
+
+		if dispatch {
+			return
+		}
 
 		if ru == '{' {
 
@@ -297,6 +310,17 @@ func (o *ObjectState) Next(f *Filter) (err error) {
 	for {
 		ru := f.ring.Peek()
 
+		// check if comments need to be dispatched
+		dispatch, cerr := dispatchComment(f)
+		if cerr != nil {
+			err = cerr
+			return
+		}
+
+		if dispatch {
+			return
+		}
+
 		if unicode.IsSpace(ru) {
 			goto next
 		}
@@ -421,6 +445,17 @@ func (r *ArrayState) Next(f *Filter) (err error) {
 	for {
 		ru := f.ring.Peek()
 
+		// check if comments need to be dispatched
+		dispatch, cerr := dispatchComment(f)
+		if cerr != nil {
+			err = cerr
+			return
+		}
+
+		if dispatch {
+			return
+		}
+
 		if unicode.IsSpace(ru) {
 			goto next
 		}
@@ -477,6 +512,110 @@ func (r *ArrayState) Next(f *Filter) (err error) {
 		return
 
 	next:
+		err = f.ring.Advance()
+		if err != nil {
+			return
+		}
+	}
+
+	return
+}
+
+func dispatchComment(f *Filter) (shouldDispatch bool, err error) {
+
+	ru := f.ring.Peek()
+
+	if ru == '/' {
+		err = f.ring.Advance()
+		if err != nil {
+			return
+		}
+
+		ru = f.ring.Peek()
+		if ru == '/' {
+			shouldDispatch = true
+			err = f.ring.Advance()
+			f.pushState(&CommentState{})
+			return
+		}
+
+		if ru == '*' {
+			shouldDispatch = true
+			err = f.ring.Advance()
+			f.pushState(&CommentMultiLineState{})
+			return
+		}
+
+		err = fmt.Errorf("invalid character %v at pos %v", string(ru), f.ring.Position())
+		return
+	}
+
+	return
+}
+
+type CommentState struct {
+	baseState
+}
+
+func (c *CommentState) Type() TokenType {
+	return Comment
+}
+
+func (c *CommentState) Next(f *Filter) (err error) {
+
+	for {
+		ru := f.ring.Peek()
+
+		if ru == '\n' {
+			f.popState()
+			err = f.ring.Advance()
+			return
+		}
+
+		err = f.ring.Advance()
+		if err != nil {
+			return
+		}
+	}
+
+	return
+}
+
+type CommentMultiLineState struct {
+	baseState
+}
+
+func (c *CommentMultiLineState) Type() TokenType {
+	return CommentMultiLine
+}
+
+func (c *CommentMultiLineState) Next(f *Filter) (err error) {
+
+	var escaped bool
+	for {
+		ru := f.ring.Peek()
+
+		if !escaped && ru == '*' {
+
+			err = f.ring.Advance()
+			if err != nil {
+				return
+			}
+
+			ru = f.ring.Peek()
+			if ru == '/' {
+				f.popState()
+				err = f.ring.Advance()
+				return
+			}
+
+			f.ring.Pop()
+		}
+
+		if ru == '\\' {
+			escaped = true
+		}
+
 		err = f.ring.Advance()
 		if err != nil {
 			return
@@ -581,6 +720,13 @@ func (f *Filter) peekFirstOpenState() (s State, err error) {
 
 func (f *Filter) pushState(s State) {
 	f.stack = append(f.stack, s)
+}
+
+func (f *Filter) popState() {
+	if len(f.stack) == 0 {
+		return
+	}
+	f.stack = f.stack[:len(f.stack)-1]
 }
 
 func (f *Filter) pushOut(r rune) {

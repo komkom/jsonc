@@ -53,11 +53,14 @@ func TestTest(t *testing.T) {
 
 func TestFilter(t *testing.T) {
 
-	s := `
+	s := ` /* json description */
 	{ 
-		t:ttestt,
-		x:x, 
-		z:[ "test" ], 
+		/* test */
+		t:ttestt /* some other comment */ ,
+		x:x, // should test this 
+		z:[ "test" /* we are in  and in a comment http://www.some.url.com   */  
+		// and a single line comment
+		], 
 		o:123.65e+7,      
 	}`
 
