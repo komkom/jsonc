@@ -154,6 +154,7 @@ func (r *KeyState) Next(f *Filter) (err *errorf) {
 			return
 		}
 
+		escaped = false
 		if ru == '\\' {
 			escaped = true
 		}
@@ -191,6 +192,7 @@ func (v *ValueState) Next(f *Filter) (err *errorf) {
 			return
 		}
 
+		escaped = false
 		if ru == '\\' {
 			escaped = true
 		}
@@ -256,6 +258,7 @@ func (r *KeyNoQuoteState) Next(f *Filter) (err *errorf) {
 			}
 		}
 
+		r.escaped = false
 		if ru == '\\' {
 			r.escaped = true
 		}
@@ -876,6 +879,7 @@ func (f *Filter) peekFirstOpenState() (s State, err *errorf) {
 }
 
 func (f *Filter) pushState(s State) {
+
 	f.stack = append(f.stack, s)
 }
 
@@ -894,11 +898,6 @@ func (f *Filter) newLine(newLineCount int) {
 			newLineCount = 2
 		}
 
-		/*
-			if newLineCount == 0 {
-				newLineCount = 1
-			}
-		*/
 		for i := 0; i < newLineCount; i++ {
 			f.pushOut('\n')
 		}
@@ -920,20 +919,6 @@ func (f *Filter) newLine(newLineCount int) {
 
 func (f *Filter) pushOut(r rune) {
 
-	/*
-		if f.format {
-			if r == '\n' {
-				f.newlineCount++
-			} else {
-				f.newlineCount = 0
-			}
-
-			if f.newlineCount < 3 {
-				f.outbuf = append(f.outbuf, byte(r))
-			}
-			return
-		}
-	*/
 	f.outbuf = append(f.outbuf, byte(r))
 }
 

@@ -87,8 +87,8 @@ y}
 			// this should redirect to myotherdomain.com
 			baseurl : "https://api.mydomain.com"
 
-			headers : [
-			{ key : auth,  value : someothertoken},
+			headers /* test */  : [
+			{ key : auth,  value : someothertoken}, // iiiii
 			{ key :  source, value : remote}
 			]
 		}
