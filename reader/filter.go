@@ -30,14 +30,15 @@ const (
 )
 
 type Filter struct {
-	ring       *Ring
-	outbuf     []byte
-	outMinSize int
-	stack      []State
-	rootState  State
-	done       bool
-	err        *errorf
-	format     bool
+	ring         *Ring
+	outbuf       []byte
+	outMinSize   int
+	stack        []State
+	rootState    State
+	done         bool
+	err          *errorf
+	format       bool
+	newlineCount int
 }
 
 func NewFilter(ring *Ring, outMinSize int, rootState State, format bool) *Filter {
@@ -82,11 +83,15 @@ func (r *RootState) Type() TokenType {
 
 func (r *RootState) Next(f *Filter) (err *errorf) {
 
+	var nlcount int
 	for {
 		ru := f.ring.Peek()
+		if ru == '\n' {
+			nlcount++
+		}
 
 		// check if comments need to be dispatched
-		dispatch, cerr := dispatchComment(f)
+		dispatch, cerr := dispatchComment(f, nlcount, nil)
 		if cerr != nil {
 			err = cerr
 			return
@@ -98,6 +103,7 @@ func (r *RootState) Next(f *Filter) (err *errorf) {
 
 		if ru == '{' {
 
+			f.newLine(nlcount)
 			f.pushOut(ru)
 			err = f.ring.Advance()
 			f.pushState(&ObjectState{})
@@ -105,6 +111,8 @@ func (r *RootState) Next(f *Filter) (err *errorf) {
 		}
 
 		if ru == '[' {
+
+			f.newLine(nlcount)
 			f.pushOut(ru)
 			err = f.ring.Advance()
 			f.pushState(&ArrayState{})
@@ -200,6 +208,8 @@ func (v *ValueState) Next(f *Filter) (err *errorf) {
 
 type KeyNoQuoteState struct {
 	baseState
+	escaped  bool
+	notFirst bool
 }
 
 func (o *KeyNoQuoteState) Type() TokenType {
@@ -208,25 +218,46 @@ func (o *KeyNoQuoteState) Type() TokenType {
 
 func (r *KeyNoQuoteState) Next(f *Filter) (err *errorf) {
 
-	var escaped bool
-	first := true
 	for {
 		ru := f.ring.Peek()
 
-		if first {
-			f.pushOut('"')
-			first = false
+		if !f.format {
+			if !r.notFirst {
+				f.pushOut('"')
+				r.notFirst = true
+			}
 		}
 
-		if !escaped && ru == ':' {
+		if !r.escaped {
 
-			f.pushOut('"')
-			r.Close()
-			return
+			// check if comments need to be dispatched
+			dispatch, cerr := dispatchComment(f, 0, func() {
+				if !f.format {
+					f.pushOut('"')
+				}
+				r.Close()
+			})
+			if cerr != nil {
+				err = cerr
+				return
+			}
+
+			if dispatch {
+				return
+			}
+
+			if ru == ':' || unicode.IsSpace(ru) {
+
+				if !f.format {
+					f.pushOut('"')
+				}
+				r.Close()
+				return
+			}
 		}
 
 		if ru == '\\' {
-			escaped = true
+			r.escaped = true
 		}
 
 		f.pushOut(ru)
@@ -242,6 +273,8 @@ func (r *KeyNoQuoteState) Next(f *Filter) (err *errorf) {
 
 type ValueNoQuoteState struct {
 	baseState
+	escaped bool
+	cval    []byte
 }
 
 func (o *ValueNoQuoteState) Type() TokenType {
@@ -250,34 +283,51 @@ func (o *ValueNoQuoteState) Type() TokenType {
 
 func (r *ValueNoQuoteState) Next(f *Filter) (err *errorf) {
 
-	var escaped bool
-	var cval []byte
+	//var escaped bool
+	//var cval []byte
 
 	renderValue := func() {
 
 		r.Close()
 
 		// check if quotes are not needed
-		v := string(cval)
+		v := string(r.cval)
 		if json.IsNumber(v) ||
 			v == `true` ||
 			v == `false` ||
 			v == `null` {
 
-			f.pushBytes(cval)
+			f.pushBytes(r.cval)
+			return
+		}
+
+		if f.format {
+			f.pushBytes(r.cval)
 			return
 		}
 
 		// quote the value
 		f.pushOut('"')
-		f.pushBytes(cval)
+		f.pushBytes(r.cval)
 		f.pushOut('"')
 	}
 
 	for {
 		ru := f.ring.Peek()
 
-		if !escaped {
+		if !r.escaped {
+			// check if comments need to be dispatched
+			dispatch, cerr := dispatchComment(f, 0, func() {
+				renderValue()
+			})
+			if cerr != nil {
+				err = cerr
+				return
+			}
+
+			if dispatch {
+				return
+			}
 
 			if unicode.IsSpace(ru) || ru == ',' || ru == '}' || ru == ']' {
 				renderValue()
@@ -285,11 +335,12 @@ func (r *ValueNoQuoteState) Next(f *Filter) (err *errorf) {
 			}
 		}
 
+		r.escaped = false
 		if ru == '\\' {
-			escaped = true
+			r.escaped = true
 		}
 
-		cval = append(cval, byte(ru))
+		r.cval = append(r.cval, byte(ru))
 
 		err = f.ring.Advance()
 		if err != nil {
@@ -323,11 +374,16 @@ func (o *ObjectState) Next(f *Filter) (err *errorf) {
 		}
 	}()
 
+	var nlcount int
+
 	for {
 		ru := f.ring.Peek()
+		if ru == '\n' {
+			nlcount++
+		}
 
 		// check if comments need to be dispatched
-		dispatch, cerr := dispatchComment(f)
+		dispatch, cerr := dispatchComment(f, nlcount, nil)
 		if cerr != nil {
 			err = cerr
 			return
@@ -344,6 +400,9 @@ func (o *ObjectState) Next(f *Filter) (err *errorf) {
 
 		switch s.Type() {
 		case Key, KeyNoQuote:
+
+			f.newLine(nlcount)
+			nlcount = 0
 
 			if o.hasKeyDelimiter {
 
@@ -388,6 +447,9 @@ func (o *ObjectState) Next(f *Filter) (err *errorf) {
 
 				o.hasKeyDelimiter = true
 				f.pushOut(ru)
+				if f.format {
+					f.pushOut(' ')
+				}
 				break
 			}
 
@@ -402,40 +464,47 @@ func (o *ObjectState) Next(f *Filter) (err *errorf) {
 					return
 				}
 				o.hasComma = true
+
 				break
 			}
 
 			if ru == '}' {
 
 				o.Close()
-				f.newLine()
+				f.newLine(nlcount)
 
 				f.pushOut(ru)
 				err = f.ring.Advance()
 				return
 			}
 
-			if ru == '"' {
+			if !f.format {
 
 				if s.Type() == Object && !s.Open() {
 					f.pushOut(',')
+					if f.format {
+						f.pushOut(' ')
+					}
 				}
 
 				if s.Type() != Object {
 					f.pushOut(',')
+					if f.format {
+						f.pushOut(' ')
+					}
 				}
+			}
+
+			if ru == '"' {
 
 				f.pushOut(ru)
 				err = f.ring.Advance()
-				f.newLine()
+				f.newLine(nlcount)
 				f.pushState(&KeyState{})
 				return
 			}
 
-			if s.Type() == Value || s.Type() == ValueNoQuote {
-				f.pushOut(',')
-			}
-			f.newLine()
+			f.newLine(nlcount)
 			f.pushState(&KeyNoQuoteState{})
 			return
 		}
@@ -452,7 +521,8 @@ func (o *ObjectState) Next(f *Filter) (err *errorf) {
 
 type ArrayState struct {
 	baseState
-	hasComma bool
+	hasComma     bool
+	didLinebreak bool
 }
 
 func (o *ArrayState) Type() TokenType {
@@ -471,11 +541,17 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 		}
 	}()
 
+	var nlcount int
 	for {
 		ru := f.ring.Peek()
 
+		if ru == '\n' {
+			r.didLinebreak = true
+			nlcount++
+		}
+
 		// check if comments need to be dispatched
-		dispatch, cerr := dispatchComment(f)
+		dispatch, cerr := dispatchComment(f, nlcount, nil)
 		if cerr != nil {
 			err = cerr
 			return
@@ -496,13 +572,16 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 				return
 			}
 			r.hasComma = true
+			f.pushOut(',')
 			goto next
 		}
 
 		if ru == ']' {
 
 			r.Close()
-			f.newLine()
+			if r.didLinebreak {
+				f.newLine(1)
+			}
 			f.pushOut(ru)
 			err = f.ring.Advance()
 			return
@@ -510,11 +589,15 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 
 		if r.hasComma || (s.Type() == Array && s.Open()) {
 
-			if r.hasComma {
-				f.pushOut(',')
-			}
+			/*
+				if r.hasComma {
+					f.pushOut(',')
+				}
+			*/
 
-			f.newLine()
+			if nlcount > 0 {
+				f.newLine(nlcount)
+			}
 
 			if ru == '[' {
 				f.pushOut(ru)
@@ -555,7 +638,7 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 	return
 }
 
-func dispatchComment(f *Filter) (shouldDispatch bool, err *errorf) {
+func dispatchComment(f *Filter, nlcount int, postHook func()) (shouldDispatch bool, err *errorf) {
 
 	ru := f.ring.Peek()
 
@@ -565,22 +648,42 @@ func dispatchComment(f *Filter) (shouldDispatch bool, err *errorf) {
 			return
 		}
 
+		if nlcount > 0 {
+			f.newLine(nlcount)
+		}
+
 		ru = f.ring.Peek()
 		if ru == '/' {
+
+			if postHook != nil {
+				postHook()
+			}
+
 			shouldDispatch = true
 			err = f.ring.Advance()
+			if f.format {
+				f.pushBytes([]byte("//"))
+			}
 			f.pushState(&CommentState{})
 			return
 		}
 
 		if ru == '*' {
+			if postHook != nil {
+				postHook()
+			}
+
 			shouldDispatch = true
+			if f.format {
+
+				f.pushBytes([]byte("/*"))
+			}
 			err = f.ring.Advance()
 			f.pushState(&CommentMultiLineState{})
 			return
 		}
 
-		err = errorF("invalid character (2) %v", f.ring.Position(), string(ru))
+		//err = errorF("invalid character (2) %v", f.ring.Position(), string(ru))
 		return
 	}
 
@@ -602,8 +705,12 @@ func (c *CommentState) Next(f *Filter) (err *errorf) {
 
 		if ru == '\n' {
 			f.popState()
-			err = f.ring.Advance()
+			//err = f.ring.Advance()
 			return
+		}
+
+		if f.format {
+			f.pushOut(ru)
 		}
 
 		err = f.ring.Advance()
@@ -633,6 +740,9 @@ func (c *CommentMultiLineState) Next(f *Filter) (err *errorf) {
 	var escaped bool
 	for {
 		ru := f.ring.Peek()
+		if f.format {
+			f.pushOut(ru)
+		}
 
 		if !escaped && ru == '*' {
 
@@ -643,6 +753,11 @@ func (c *CommentMultiLineState) Next(f *Filter) (err *errorf) {
 
 			ru = f.ring.Peek()
 			if ru == '/' {
+
+				if f.format {
+					f.pushOut('/')
+				}
+
 				f.popState()
 				err = f.ring.Advance()
 				return
@@ -771,11 +886,22 @@ func (f *Filter) popState() {
 	f.stack = f.stack[:len(f.stack)-1]
 }
 
-func (f *Filter) newLine() {
+func (f *Filter) newLine(newLineCount int) {
 
-	if f.format {
+	if f.format && newLineCount > 0 {
 
-		f.pushOut('\n')
+		if newLineCount > 2 {
+			newLineCount = 2
+		}
+
+		/*
+			if newLineCount == 0 {
+				newLineCount = 1
+			}
+		*/
+		for i := 0; i < newLineCount; i++ {
+			f.pushOut('\n')
+		}
 
 		idx := 0
 		for _, s := range f.stack {
@@ -793,6 +919,21 @@ func (f *Filter) newLine() {
 }
 
 func (f *Filter) pushOut(r rune) {
+
+	/*
+		if f.format {
+			if r == '\n' {
+				f.newlineCount++
+			} else {
+				f.newlineCount = 0
+			}
+
+			if f.newlineCount < 3 {
+				f.outbuf = append(f.outbuf, byte(r))
+			}
+			return
+		}
+	*/
 	f.outbuf = append(f.outbuf, byte(r))
 }
 

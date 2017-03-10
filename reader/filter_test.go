@@ -28,16 +28,71 @@ func Test2(t *testing.T) {
 func JsonToFormat() []string {
 
 	return []string{
-		`{ 
-/* some comment */
-	x:x
-	y:y
+		`{
+
+			zz:uu /* test comment */
+
+
+			x:x
+// some comment
+	y:y 
+	
+	/* here wie
+have some thing */
 	z:z
 	arr: [
-	1,2,3,4,5,6, {x:x, t:[x,13,5,6,7,{t:t},8,9]}		
+
+	1,2,3,4,5,6, {
+		
+		x/*an other*/: /*some comment*/  x /* about that */, t:[x,13,5, // and this
+	6,       /* about this seven */ 7,
+
+
+
+
+	8,9,["4",5,7,8,9],2,3,
+
+	4,5]}		
 	], u:
 	{x:
 y}
+}
+`,
+		`
+// test
+
+// application config data
+{
+	api : {
+
+		// test
+		// tets
+
+		// test this
+		// qa configuration against a local server
+		qa : {
+
+			// some comment here
+			// some comment here
+			baseurl : test // "http://localhost:1234/myapi" /* use non ssl connection */
+	
+			headers : [ // ugly header setup to make it work on local
+			{ key: auth  value: sometoken /* auto token for dummy user */ },
+			{ key: source value: local }
+			]
+			x : { x: y }
+		}
+		live : {
+		
+			// this should redirect to myotherdomain.com
+			baseurl : "https://api.mydomain.com"
+
+			headers : [
+			{ key : auth,  value : someothertoken},
+			{ key :  source, value : remote}
+			]
+		}
+	}
 }
 `,
 	}
@@ -83,7 +138,8 @@ func JsonData() []TestJson {
 
 	return []TestJson{
 		TestJson{
-			JsonCString: `{"y":"y"}`,
+			JsonCString:        `{y/* test */:y/* test */}`,
+			ExpectedJsonString: `{"y":"y"}`,
 		},
 		TestJson{
 			JsonCString:        `{x:x}`,
@@ -134,6 +190,10 @@ func JsonData() []TestJson {
 			/* another comment */ 7: [1,2,3,4,5,6],
 			3:3,4:4,5:5 /*hmm*/ ,} // test comment at the end`,
 			ExpectedJsonString: `{"1":1,"2":2,"7":[1,2,3,4,5,6],"3":3,"4":4,"5":5}`,
+		},
+		TestJson{
+			JsonCString: `{ test// test : value 
+			: key  v : h }`,
 		},
 	}
 }
