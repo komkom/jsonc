@@ -587,7 +587,7 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 			return
 		}
 
-		if r.hasComma || (s.Type() == Array && s.Open()) {
+		if (r.hasComma || f.format) || (s.Type() == Array && s.Open()) {
 
 			/*
 				if r.hasComma {

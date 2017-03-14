@@ -2,11 +2,11 @@ package reader
 
 import "io"
 
-func New(r io.Reader, minimize bool) io.Reader {
+func New(r io.Reader, minimize bool) (reader io.Reader, err error) {
 
 	buf := NewBuffer(r, 256, 64)
 
-	ring, err := NewRing(256, 64, func() (r rune, size int, err *errorf) {
+	ring, errf := NewRing(256, 64, func() (r rune, size int, err *errorf) {
 
 		r, size, cerr := buf.ReadRune()
 		if cerr != nil {
@@ -15,9 +15,11 @@ func New(r io.Reader, minimize bool) io.Reader {
 		return
 	})
 
-	if err != nil {
-		panic(err)
+	if errf != nil {
+		err = errf
+		return
 	}
 
-	return NewFilter(ring, 256, &RootState{}, !minimize)
+	reader = NewFilter(ring, 256, &RootState{}, !minimize)
+	return
 }
