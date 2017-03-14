@@ -1,0 +1,36 @@
+digraph {
+    
+graph [rankdir=LR]
+
+// start
+s ->  takespace
+takespace -> rawvalue
+
+rawvalue -> takespace1
+
+rawvalue -> e
+rawvalue -> oneplus
+oneplus -> takespace
+
+takespace1 -> comma
+comma -> takespace
+
+takespace -> value
+value -> takespace1
+value -> oneplus
+value -> e
+
+s [label="["];
+e [label="]"];
+
+
+subgraph cluster_keyvalue_wrapper {
+
+	rawvalue [label="raw-value"];
+	takespace [label="[ ]*"];
+	takespace1 [label="[ ]*"];
+	comma [label=","];
+	oneplus [label="[ ]{1,}"];
+}
+}
+

@@ -1,0 +1,79 @@
+digraph {
+    
+graph [rankdir=LR]
+
+// start
+s ->  takespace5
+takespace1 -> double
+double -> takespace4 
+takespace4 -> rawval
+
+// from raw value
+rawval -> end
+rawval -> takespace
+rawval -> oneplus
+
+oneplus -> rawkey
+
+takespace -> comma2 
+takespace -> rawkey
+takespace -> string
+takespace -> end
+
+comma2 -> takespace5 
+
+takespace5 -> rawkey
+takespace5 -> string
+
+rawkey -> takespace1;
+
+// from string
+s -> string 
+string -> double;
+double -> value;
+
+value -> takespace3;
+value -> oneplus2
+value -> comma
+value -> end;
+
+comma -> string
+comma -> takespace5
+
+takespace3 -> end
+takespace3 -> comma
+
+oneplus2 -> rawkey
+
+        
+s [label="{"]
+end [label="}"]
+
+subgraph cluster_keyvalue_wrapper {
+	subgraph cluster_keyvalue {
+		string [label="string"]
+		value [label="value"]
+		double [label=":"]
+	}
+
+	subgraph cluster_toraw {
+		comma [label=","]
+		takespace3 [label="[ ]* (3)"]
+		oneplus2 [label="[ ]{1,}"]
+	}
+}
+
+subgraph cluster_raw_wrapper {
+
+subgraph cluster_raw {
+	rawkey [label="raw-key"]
+	rawval [label="raw-value"]
+	takespace [label="[ ]* (0)"]
+	takespace1 [label="[ ]* (1)"]
+	takespace4 [label="[ ]* (4)"]
+	takespace5 [label="[ ]* (5)"]
+	comma2 [label=","]
+}
+	oneplus [label="[ ]{1,}"]
+}
+}
