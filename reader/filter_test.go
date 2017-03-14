@@ -227,7 +227,7 @@ func TestJsonParser2(t *testing.T) {
 		buf := &bytes.Buffer{}
 
 		_, err := buf.ReadFrom(f)
-		t.Logf("json out:\n %s", buf.Bytes())
+		t.Logf("idx: %v json out:\n %s", idx, buf.Bytes())
 
 		if d.ExpectedStringInError != `` {
 

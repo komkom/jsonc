@@ -572,7 +572,6 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 				return
 			}
 			r.hasComma = true
-			f.pushOut(',')
 			goto next
 		}
 
@@ -587,40 +586,37 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 			return
 		}
 
-		if (r.hasComma || f.format) || (s.Type() == Array && s.Open()) {
+		if !f.format && (s.Type() != Array || !s.Open()) {
+			f.pushOut(',')
+		}
 
-			/*
-				if r.hasComma {
-					f.pushOut(',')
-				}
-			*/
+		if nlcount > 0 {
+			f.newLine(nlcount)
+		}
 
-			if nlcount > 0 {
-				f.newLine(nlcount)
-			}
+		if ru == '[' {
+			f.pushOut(ru)
+			err = f.ring.Advance()
+			f.pushState(&ArrayState{})
+			return
+		}
 
-			if ru == '[' {
-				f.pushOut(ru)
-				err = f.ring.Advance()
-				f.pushState(&ArrayState{})
-				return
-			}
+		if ru == '{' {
+			f.pushOut(ru)
+			err = f.ring.Advance()
+			f.pushState(&ObjectState{})
+			return
+		}
 
-			if ru == '{' {
-				f.pushOut(ru)
-				err = f.ring.Advance()
-				f.pushState(&ObjectState{})
-				return
-			}
+		if ru == '"' {
 
-			if ru == '"' {
+			f.pushOut(ru)
+			err = f.ring.Advance()
+			f.pushState(&ValueState{})
+			return
+		}
 
-				f.pushOut(ru)
-				err = f.ring.Advance()
-				f.pushState(&ValueState{})
-				return
-			}
-
+		if !unicode.IsSpace(ru) {
 			f.pushState(&ValueNoQuoteState{})
 			return
 		}
