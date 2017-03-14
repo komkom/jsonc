@@ -481,20 +481,17 @@ func (o *ObjectState) Next(f *Filter) (err *errorf) {
 				return
 			}
 
-			if !f.format {
-
-				if s.Type() == Object && !s.Open() {
-					f.pushOut(',')
-					if f.format {
-						f.pushOut(' ')
-					}
+			if s.Type() == Object && !s.Open() {
+				f.pushOut(',')
+				if f.format {
+					f.pushOut(' ')
 				}
+			}
 
-				if s.Type() != Object {
-					f.pushOut(',')
-					if f.format {
-						f.pushOut(' ')
-					}
+			if s.Type() != Object {
+				f.pushOut(',')
+				if f.format {
+					f.pushOut(' ')
 				}
 			}
 
