@@ -581,6 +581,7 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 				return
 			}
 			r.hasComma = true
+
 			goto next
 		}
 
@@ -595,8 +596,11 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 			return
 		}
 
-		if !f.format && (s.Type() != Array || !s.Open()) {
+		if s.Type() != Array || !s.Open() {
 			f.pushOut(',')
+			if f.format {
+				f.pushOut(' ')
+			}
 		}
 
 		if nlcount > 0 {
