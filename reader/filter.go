@@ -755,7 +755,7 @@ func (c *CommentMultiLineState) Next(f *Filter) (err *errorf) {
 		ru := f.ring.Peek()
 		if f.format {
 
-			if !hasNewline || !unicode.IsSpace(ru) {
+			if !hasNewline || ru == '\n' || !unicode.IsSpace(ru) {
 
 				hasNewline = false
 
