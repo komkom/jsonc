@@ -31,7 +31,6 @@ const (
 
 type Filter struct {
 	ring         *Ring
-	outbuf       []byte
 	outMinSize   int
 	stack        []State
 	rootState    State
@@ -39,6 +38,10 @@ type Filter struct {
 	err          *errorf
 	format       bool
 	newlineCount int
+
+	outbuf            []byte
+	lastWasWhitespace bool
+	embed             bool
 }
 
 func NewFilter(ring *Ring, outMinSize int, rootState State, format bool) *Filter {
@@ -468,6 +471,12 @@ func (o *ObjectState) Next(f *Filter) (err *errorf) {
 				}
 				o.hasComma = true
 
+				if f.format {
+
+					f.pushOut(',')
+					f.pushOut(' ')
+				}
+
 				break
 			}
 
@@ -481,19 +490,19 @@ func (o *ObjectState) Next(f *Filter) (err *errorf) {
 				return
 			}
 
-			if s.Type() == Object && !s.Open() {
+			if !f.format && ((s.Type() == Object && !s.Open()) || s.Type() != Object) {
 				f.pushOut(',')
-				if f.format {
-					f.pushOut(' ')
-				}
+
 			}
 
-			if s.Type() != Object {
-				f.pushOut(',')
-				if f.format {
-					f.pushOut(' ')
+			/*
+				if s.Type() != Object {
+					f.pushOut(',')
+					if f.format {
+						f.pushOut(' ')
+					}
 				}
-			}
+			*/
 
 			if ru == '"' {
 
@@ -658,6 +667,9 @@ func dispatchComment(f *Filter, nlcount int, postHook func()) (shouldDispatch bo
 			shouldDispatch = true
 			err = f.ring.Advance()
 			if f.format {
+				if !f.lastWasWhitespace {
+					f.pushOut(' ')
+				}
 				f.pushBytes([]byte("//"))
 			}
 			f.pushState(&CommentState{})
@@ -671,6 +683,9 @@ func dispatchComment(f *Filter, nlcount int, postHook func()) (shouldDispatch bo
 
 			shouldDispatch = true
 			if f.format {
+				if !f.lastWasWhitespace {
+					f.pushOut(' ')
+				}
 
 				f.pushBytes([]byte("/*"))
 			}
@@ -713,6 +728,7 @@ func (c *CommentState) Next(f *Filter) (err *errorf) {
 
 		if err != nil {
 			if err.error == io.EOF {
+				f.embed = true
 				f.popState()
 			}
 
@@ -753,6 +769,8 @@ func (c *CommentMultiLineState) Next(f *Filter) (err *errorf) {
 				if f.format {
 					f.pushOut('/')
 				}
+
+				f.embed = true
 
 				f.popState()
 				err = f.ring.Advance()
@@ -912,11 +930,28 @@ func (f *Filter) newLine(newLineCount int) {
 
 func (f *Filter) pushOut(r rune) {
 
+	f.embedIfNeeded(r)
+
 	f.outbuf = append(f.outbuf, byte(r))
+	f.lastWasWhitespace = unicode.IsSpace(r)
 }
 
 func (f *Filter) pushBytes(b []byte) {
+
+	// always embed
+	f.embedIfNeeded('x')
+
 	f.outbuf = append(f.outbuf, b...)
+	f.lastWasWhitespace = false
+}
+
+func (f *Filter) embedIfNeeded(r rune) {
+	if f.format {
+		if f.embed && !unicode.IsSpace(r) {
+			f.outbuf = append(f.outbuf, byte(' '))
+		}
+		f.embed = false
+	}
 }
 
 func (f *Filter) printStack() {
