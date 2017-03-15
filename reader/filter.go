@@ -750,10 +750,22 @@ func (c *CommentMultiLineState) Type() TokenType {
 func (c *CommentMultiLineState) Next(f *Filter) (err *errorf) {
 
 	var escaped bool
+	var hasNewline bool
 	for {
 		ru := f.ring.Peek()
 		if f.format {
-			f.pushOut(ru)
+
+			if !hasNewline || !unicode.IsSpace(ru) {
+
+				hasNewline = false
+
+				if ru == '\n' {
+					f.newLine(1)
+					hasNewline = true
+				} else {
+					f.pushOut(ru)
+				}
+			}
 		}
 
 		if !escaped && ru == '*' {
