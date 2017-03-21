@@ -1,0 +1,14 @@
+{ /*test*/
+  x: xxx
+
+/* 
+test asdf asdf asdf
+  
+  
+  asdf asdf asdf asdf 
+  asdf asdf asdf asdf  
+*/
+
+  // test commenti/*test*/  
+  y: /* test */ y
+}
