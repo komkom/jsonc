@@ -474,7 +474,8 @@ func (o *ObjectState) Next(f *Filter) (err *errorf) {
 				if f.format {
 
 					f.pushOut(',')
-					f.pushOut(' ')
+					f.embed = true
+					//f.pushOut(' ')
 				}
 
 				break
@@ -506,9 +507,9 @@ func (o *ObjectState) Next(f *Filter) (err *errorf) {
 
 			if ru == '"' {
 
+				f.newLine(nlcount)
 				f.pushOut(ru)
 				err = f.ring.Advance()
-				f.newLine(nlcount)
 				f.pushState(&KeyState{})
 				return
 			}
