@@ -1,3 +1,5 @@
+//go:generate gopherjs build pages/index.go
+//go:generate mv index.js config/data/static
 package main
 
 import (

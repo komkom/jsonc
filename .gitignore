@@ -1,2 +1,3 @@
 *.swp
 bindata.go
+web/config/data
