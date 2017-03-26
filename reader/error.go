@@ -7,6 +7,10 @@ type errorf struct {
 	position int
 }
 
+func (e *errorf) Err() error {
+	return e.error
+}
+
 func cerror(err error) *errorf {
 	return &errorf{err, -1}
 }

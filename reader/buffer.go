@@ -30,12 +30,18 @@ func (b *Buffer) ReadRune() (r rune, size int, err error) {
 		return
 	}
 
+	if len(b.active) == 0 {
+		size = 0
+		err = io.EOF
+		return
+	}
+
 	r, size = utf8.DecodeRune(b.active)
 
 	b.active = b.active[size:]
 
 	if r == utf8.RuneError {
-		err = fmt.Errorf("rune error")
+		err = fmt.Errorf("rune error size: %v len %v", size, len(b.active))
 		b.cerr = err
 		return
 	}
