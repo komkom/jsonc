@@ -598,9 +598,11 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 		}
 
 		if s.Type() != Array || !s.Open() {
-			f.pushOut(',')
 			if f.format {
-				f.pushOut(' ')
+				f.pushOut(',')
+				f.embed = true
+			} else {
+				f.pushOut(',')
 			}
 		}
 
