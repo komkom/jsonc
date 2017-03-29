@@ -476,12 +476,13 @@ func (o *ObjectState) Next(f *Filter) (err *errorf) {
 				if f.format {
 
 					f.pushOut(',')
-					f.embed = true
 					//f.pushOut(' ')
 				}
 
 				break
 			}
+
+			f.embed = true
 
 			if ru == '}' {
 
@@ -982,7 +983,7 @@ func (f *Filter) pushBytes(b []byte) {
 func (f *Filter) embedIfNeeded(r rune) {
 	if f.format {
 		if f.embed && !unicode.IsSpace(r) {
-			f.outbuf = append(f.outbuf, byte(' '))
+			f.outbuf = append(f.outbuf, []byte(f.space)...)
 		}
 		f.embed = false
 	}
