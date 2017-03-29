@@ -38,15 +38,16 @@ type Filter struct {
 	err          *errorf
 	format       bool
 	newlineCount int
+	space        string
 
 	outbuf            []byte
 	lastWasWhitespace bool
 	embed             bool
 }
 
-func NewFilter(ring *Ring, outMinSize int, rootState State, format bool) *Filter {
+func NewFilter(ring *Ring, outMinSize int, rootState State, format bool, space string) *Filter {
 
-	return &Filter{ring: ring, outMinSize: outMinSize, rootState: rootState, format: format}
+	return &Filter{ring: ring, outMinSize: outMinSize, rootState: rootState, format: format, space: space}
 }
 
 func (f *Filter) Clear() {
@@ -454,12 +455,13 @@ func (o *ObjectState) Next(f *Filter) (err *errorf) {
 				o.hasKeyDelimiter = true
 				f.pushOut(ru)
 				if f.format {
-					f.pushOut(' ')
+					//f.pushOut(' ')
+					f.pushSpace()
 				}
 				break
 			}
 
-			err = errorF("error parsing object %v", f.ring.Position())
+			err = errorF("error parsing object rune: %v", f.ring.Position(), string(ru))
 			return
 
 		case Value, ValueNoQuote, Object, Array:
@@ -598,10 +600,12 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 		}
 
 		if s.Type() != Array || !s.Open() {
-			if f.format {
+			if f.format && r.hasComma {
 				f.pushOut(',')
 				f.embed = true
-			} else {
+			}
+
+			if !f.format {
 				f.pushOut(',')
 			}
 		}
@@ -675,7 +679,8 @@ func dispatchComment(f *Filter, nlcount int, postHook func()) (shouldDispatch bo
 			err = f.ring.Advance()
 			if f.format {
 				if !f.lastWasWhitespace {
-					f.pushOut(' ')
+					//f.pushOut(' ')
+					f.pushSpace()
 				}
 				f.pushBytes([]byte("//"))
 			}
@@ -691,7 +696,8 @@ func dispatchComment(f *Filter, nlcount int, postHook func()) (shouldDispatch bo
 			shouldDispatch = true
 			if f.format {
 				if !f.lastWasWhitespace {
-					f.pushOut(' ')
+					//f.pushOut(' ')
+					f.pushSpace()
 				}
 
 				f.pushBytes([]byte("/*"))
@@ -940,11 +946,20 @@ func (f *Filter) newLine(newLineCount int) {
 		}
 
 		for i := 0; i < idx; i++ {
-			f.pushOut(' ')
+			//f.pushOut(' ')
+			//f.pushOut(' ')
 
-			f.pushOut(' ')
+			f.pushSpace()
+			f.pushSpace()
 		}
 	}
+}
+
+func (f *Filter) pushSpace() {
+
+	f.embed = false
+	f.outbuf = append(f.outbuf, []byte(f.space)...)
+	f.lastWasWhitespace = true
 }
 
 func (f *Filter) pushOut(r rune) {

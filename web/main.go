@@ -1,14 +1,11 @@
-//go:generate gopherjs build pages/index.go
-//go:generate mv index.js config/data/static
+//go:generate gopherjs build js/main.go
+//go:generate mv main.js config/data/static
 package main
 
 import (
-	"bytes"
-	"io"
 	"net/http"
 	"path"
 
-	"github.com/komkom/jsonc/reader"
 	"github.com/komkom/jsonc/web/config"
 )
 
@@ -32,25 +29,21 @@ func main() {
 		resp.Write(config.C.IndexPage)
 	})
 
-	http.HandleFunc(`/fmt`, func(resp http.ResponseWriter, req *http.Request) {
+	/*
+		http.HandleFunc(`/fmt`, func(resp http.ResponseWriter, req *http.Request) {
 
-		buf := bytes.Buffer{}
-		buf.ReadFrom(req.Body)
+			buf := bytes.Buffer{}
+			buf.ReadFrom(req.Body)
 
-		//fmt.Printf("_____ %s", buf.Bytes())
+			jcr, err := reader.New(&buf, true, " ")
+			if err != nil {
+				error404(resp)
+				return
+			}
 
-		jcr, err := reader.New(&buf, true)
-		if err != nil {
-			//fmt.Printf("____uu   %v", err.Error())
-			error404(resp)
-			return
-		}
-
-		io.Copy(resp, jcr)
-
-		//resp.Write([]byte(`{"test":"test"}`))
-
-	})
+			io.Copy(resp, jcr)
+		})
+	*/
 
 	http.ListenAndServe(`:1199`, nil)
 

@@ -1,3 +1,4 @@
 *.swp
+*.map
 bindata.go
 web/config/data

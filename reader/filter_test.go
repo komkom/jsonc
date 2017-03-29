@@ -107,7 +107,7 @@ func TestFormatter(t *testing.T) {
 		panic(err)
 	}
 
-	f := NewFilter(ring, 256, &RootState{}, true)
+	f := NewFilter(ring, 256, &RootState{}, true, " ")
 
 	for _, d := range data {
 
@@ -207,7 +207,7 @@ func TestJsonParser2(t *testing.T) {
 		panic(err)
 	}
 
-	f := NewFilter(ring, 256, &RootState{}, false)
+	f := NewFilter(ring, 256, &RootState{}, false, " ")
 
 	for idx, d := range data {
 

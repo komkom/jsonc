@@ -8,10 +8,6 @@
 	border: 1px solid #73AD21;  
 }
 
-.after-box {
-	border: 1px solid red; 
-}
-
 textarea{
 	border:1px solid #999999;
 	width:98%;
@@ -39,19 +35,14 @@ textarea{
 		<div class="floating-box">Floating box</div>
 		<div class="floating-box"><input type="button" value="back"/></div>
 
-		<div class="after-box"><textarea id="edit" rows=10>At w3schools.com you will learn how to make a website. We offer free tutorials in all web development technologies.
-				adsf
-				asdf
-				asd
-				fa
-				sdf
-			</textarea></div>
+		<div class="after-box">
+			<div contenteditable="true" id="edit">{ x:x <br/> y:y <br/>}</div>
+		</div>
 
-			<div class="floating-box"><input type="button" value="edit"/></div>
-			<div class="floating-box">view</div>
+		<div class="floating-box"><input type="button" value="edit"/></div>
+		<div class="floating-box">view</div>
 
-
-		<script src="/static/static/index.js"></script>
+		<script src="/static/main.js"></script>
 
 	</body>
 </html>

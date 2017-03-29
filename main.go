@@ -70,7 +70,7 @@ func process(dir string, files []os.FileInfo, minimize bool) error {
 			defer f.Close()
 			w = f
 
-			jcr, err = reader.New(r, minimize)
+			jcr, err = reader.New(r, minimize, " ")
 			if err != nil {
 				return err
 			}
@@ -132,7 +132,7 @@ func main() {
 
 	} else {
 
-		r, err := reader.New(os.Stdin, *minimize)
+		r, err := reader.New(os.Stdin, *minimize, " ")
 		if err != nil {
 			log.Infof("no input stream, error: %v", err)
 			os.Exit(1)

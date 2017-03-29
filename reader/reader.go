@@ -2,7 +2,7 @@ package reader
 
 import "io"
 
-func New(r io.Reader, minimize bool) (reader io.Reader, err error) {
+func New(r io.Reader, minimize bool, space string) (reader io.Reader, err error) {
 
 	buf := NewBuffer(r, 256, 64)
 
@@ -20,6 +20,6 @@ func New(r io.Reader, minimize bool) (reader io.Reader, err error) {
 		return
 	}
 
-	reader = NewFilter(ring, 256, &RootState{}, !minimize)
+	reader = NewFilter(ring, 256, &RootState{}, !minimize, space)
 	return
 }

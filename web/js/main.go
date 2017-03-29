@@ -9,13 +9,12 @@ import (
 	"github.com/komkom/jsonc/reader"
 )
 
-//convenience:
 var jQuery = jquery.NewJQuery
 
 const (
 	Fmt      = `input#fmt`
 	Json     = `input#json`
-	TextArea = `textarea#edit`
+	TextArea = `div#edit`
 )
 
 func main() {
@@ -34,11 +33,24 @@ func main() {
 
 func process(minimize bool) {
 
-	edit := jQuery(TextArea).Val()
+	edit := jQuery(TextArea).Html()
+	print(`____i ` + edit)
+
+	edit = strings.Replace(edit, `<br>`, "\n", -1)
+
+	edit = strings.Replace(edit, `<div>\n</div>`, "\n", -1)
+
+	edit = strings.Replace(edit, `&nbsp;`, ` `, -1)
+
+	edit = strings.Replace(edit, `<div>`, "\n", -1)
+
+	edit = strings.Replace(edit, `</div>`, "\n", -1)
+
+	print(edit)
 
 	r := strings.NewReader(edit)
 
-	jcr, err := reader.New(r, minimize)
+	jcr, err := reader.New(r, minimize, "&nbsp;")
 	if err != nil {
 		print("error 1")
 		return
@@ -56,7 +68,14 @@ func process(minimize bool) {
 		return
 	}
 
+	print(`success`)
+
 	json := string(buf.Bytes())
 
-	jQuery(TextArea).SetVal(json)
+	i //print(json)
+
+	json = strings.Replace(json, "\n", `<br/>`, -1)
+
+	//print(json)
+	jQuery(TextArea).SetHtml(json)
 }
