@@ -8,13 +8,14 @@
 	border: 1px solid #73AD21;  
 }
 
-textarea{
-	border:1px solid #999999;
-	width:98%;
-	hight:98%;
+.content_editable {
 
-	margin:3px 0;
-	padding:1px;
+	border:1px solid #999999;
+	white-space: pre-wrap;       /* css-3 */
+	white-space: -moz-pre-wrap;  /* Mozilla, since 1999 */
+	white-space: -pre-wrap;      /* Opera 4-6 */
+	white-space: -o-pre-wrap;    /* Opera 7 */
+	word-wrap: break-word;       /* Internet Explorer 5.5+ */
 }
 		</style>
 
@@ -24,19 +25,13 @@ textarea{
 	</head>
 	<body>
 
-		<h2>The New Way - using inline-block</h2>
+		<h2>jsonc</h2>
 
 		<div class="floating-box"><input type="button" id="fmt" value="fmt"/></div>
 		<div class="floating-box"><input type="button" id="json" value="json"/></div>
-		<div class="floating-box"><input id="name" type="text" value="" placeholder="What is your name ?"/></div>
-		<div class="floating-box">Floating box</div>
-		<div class="floating-box">Floating box</div>
-		<div class="floating-box">Floating box</div>
-		<div class="floating-box">Floating box</div>
-		<div class="floating-box"><input type="button" value="back"/></div>
 
 		<div class="after-box">
-			<div contenteditable="true" id="edit">{ x:x <br/> y:y <br/>}</div>
+			<div class="content_editable" contenteditable="true" id="edit">{ x:x <br/> y:y <br/>}</div>
 		</div>
 
 		<div class="floating-box"><input type="button" value="edit"/></div>

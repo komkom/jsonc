@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"strings"
 
@@ -23,15 +24,27 @@ func main() {
 	print("22 Your current jQuery version is: " + jQuery().Jquery)
 
 	jQuery(Json).On(jquery.CLICK, func(e jquery.Event) {
-		process(true)
+		json, err := process(true)
+		if err != nil {
+			panic(err)
+		}
+
+		b := PrettyJson([]byte(json))
+
+		jQuery(TextArea).SetHtml(string(b))
 	})
 
 	jQuery(Fmt).On(jquery.CLICK, func(e jquery.Event) {
-		process(false)
+		json, err := process(false)
+		if err != nil {
+			panic(err)
+		}
+
+		jQuery(TextArea).SetHtml(json)
 	})
 }
 
-func process(minimize bool) {
+func process(minimize bool) (json string, err error) {
 
 	edit := jQuery(TextArea).Html()
 	print(`____i ` + edit)
@@ -44,13 +57,15 @@ func process(minimize bool) {
 
 	edit = strings.Replace(edit, `<div>`, "\n", -1)
 
-	edit = strings.Replace(edit, `</div>`, "\n", -1)
+	print(`____o ` + edit)
+
+	edit = strings.Replace(edit, `</div>`, "", -1)
 
 	print(edit)
 
 	r := strings.NewReader(edit)
 
-	jcr, err := reader.New(r, minimize, "&nbsp;")
+	jcr, err := reader.New(r, minimize, "&nbsp;&nbsp;")
 	if err != nil {
 		print("error 1")
 		return
@@ -70,12 +85,24 @@ func process(minimize bool) {
 
 	print(`success`)
 
-	json := string(buf.Bytes())
+	json = string(buf.Bytes())
 
-	i //print(json)
+	//print(json)
 
 	json = strings.Replace(json, "\n", `<br/>`, -1)
 
+	return
 	//print(json)
-	jQuery(TextArea).SetHtml(json)
+}
+
+func PrettyJson(jsn []byte) (prettyJson []byte) {
+
+	var pretty bytes.Buffer
+	err := json.Indent(&pretty, jsn, "&nbsp;&nbsp;", "&nbsp;")
+	if err != nil {
+		return
+	}
+
+	prettyJson = pretty.Bytes()
+	return
 }
