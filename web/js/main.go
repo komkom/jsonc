@@ -13,9 +13,10 @@ import (
 var jQuery = jquery.NewJQuery
 
 const (
-	Fmt      = `input#fmt`
-	Json     = `input#json`
-	TextArea = `div#edit`
+	Fmt       = `input#fmt`
+	ToJson    = `input#tojson`
+	JsoncArea = `div#edit`
+	JsonArea  = `div#editjson`
 )
 
 func main() {
@@ -23,7 +24,7 @@ func main() {
 	//show jQuery Version on console:
 	print("22 Your current jQuery version is: " + jQuery().Jquery)
 
-	jQuery(Json).On(jquery.CLICK, func(e jquery.Event) {
+	jQuery(ToJson).On(jquery.CLICK, func(e jquery.Event) {
 		json, err := process(true)
 		if err != nil {
 			panic(err)
@@ -31,22 +32,23 @@ func main() {
 
 		b := PrettyJson([]byte(json))
 
-		jQuery(TextArea).SetHtml(string(b))
+		jQuery(JsonArea).SetHtml(string(b))
 	})
 
 	jQuery(Fmt).On(jquery.CLICK, func(e jquery.Event) {
+
 		json, err := process(false)
 		if err != nil {
 			panic(err)
 		}
 
-		jQuery(TextArea).SetHtml(json)
+		jQuery(JsoncArea).SetHtml(json)
 	})
 }
 
 func process(minimize bool) (json string, err error) {
 
-	edit := jQuery(TextArea).Html()
+	edit := jQuery(JsoncArea).Html()
 	print(`____i ` + edit)
 
 	edit = strings.Replace(edit, `<br>`, "\n", -1)
@@ -56,8 +58,6 @@ func process(minimize bool) (json string, err error) {
 	edit = strings.Replace(edit, `&nbsp;`, ` `, -1)
 
 	edit = strings.Replace(edit, `<div>`, "\n", -1)
-
-	print(`____o ` + edit)
 
 	edit = strings.Replace(edit, `</div>`, "", -1)
 
@@ -87,12 +87,9 @@ func process(minimize bool) (json string, err error) {
 
 	json = string(buf.Bytes())
 
-	//print(json)
-
 	json = strings.Replace(json, "\n", `<br/>`, -1)
 
 	return
-	//print(json)
 }
 
 func PrettyJson(jsn []byte) (prettyJson []byte) {

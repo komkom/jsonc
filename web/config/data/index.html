@@ -2,11 +2,6 @@
 <html>
 	<head>
 		<style>
-.floating-box {
-	display: inline-block;
-	margin: 1px;
-	border: 1px solid #73AD21;  
-}
 
 .content_editable {
 
@@ -17,25 +12,50 @@
 	white-space: -o-pre-wrap;    /* Opera 7 */
 	word-wrap: break-word;       /* Internet Explorer 5.5+ */
 }
+
+.container {
+	position:relative;
+	border: 1px solid blue;
+}
+
+.inlineLeft, .inlineRight {
+	position:absolute;
+	display: inline;
+}
+
+.inlineRight {
+	right:0;
+}
+
+.vspace {
+	height:40px;
+	width:100%;
+	clear:both;
+}
+
 		</style>
 
 
 		<script src="https://code.jquery.com/jquery-2.x-git.js"></script>
-
 	</head>
+
 	<body>
 
 		<h2>jsonc</h2>
 
-		<div class="floating-box"><input type="button" id="fmt" value="fmt"/></div>
-		<div class="floating-box"><input type="button" id="json" value="json"/></div>
+		<div class="content_editable" contenteditable="true" id="edit">{ x1:x1 <br/> y:y <br/>}</div>
 
-		<div class="after-box">
-			<div class="content_editable" contenteditable="true" id="edit">{ x:x <br/> y:y <br/>}</div>
+		<div class="container">
+			<div class="inlineLeft"><input type="button" value="view"/></div>
+			`<div class="inlineRight">
+				<input type="button" id="tojson" value="tojson"/>
+				<input type="button" id="fmt" value="fmt"/>
+			</div>
 		</div>
 
-		<div class="floating-box"><input type="button" value="edit"/></div>
-		<div class="floating-box">view</div>
+		<div class="vspace"></div>
+
+		<div class="content_editable" contenteditable="true" id="editjson">some json</div>
 
 		<script src="/static/main.js"></script>
 
