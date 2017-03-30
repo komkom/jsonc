@@ -14,7 +14,7 @@ var jQuery = jquery.NewJQuery
 
 const (
 	Fmt       = `input#fmt`
-	ToJson    = `input#tojson`
+	Clear     = `input#clear`
 	JsoncArea = `div#edit`
 	JsonArea  = `div#editjson`
 )
@@ -24,26 +24,40 @@ func main() {
 	//show jQuery Version on console:
 	print("22 Your current jQuery version is: " + jQuery().Jquery)
 
-	jQuery(ToJson).On(jquery.CLICK, func(e jquery.Event) {
-		json, err := process(true)
-		if err != nil {
-			panic(err)
-		}
+	jQuery(Clear).On(jquery.CLICK, func(e jquery.Event) {
 
-		b := PrettyJson([]byte(json))
+		jQuery(JsoncArea).SetHtml(``)
+		jQuery(JsonArea).SetHtml(``)
+	})
 
-		jQuery(JsonArea).SetHtml(string(b))
+	jQuery(JsoncArea).On(jquery.FOCUSOUT, func(e jquery.Event) {
+		load()
 	})
 
 	jQuery(Fmt).On(jquery.CLICK, func(e jquery.Event) {
-
-		json, err := process(false)
-		if err != nil {
-			panic(err)
-		}
-
-		jQuery(JsoncArea).SetHtml(json)
+		load()
 	})
+}
+
+func load() {
+
+	jsonc, err := process(false)
+	if err != nil {
+		panic(err)
+	}
+
+	jsonc = strings.Replace(jsonc, "\n", `<br/>`, -1)
+	jQuery(JsoncArea).SetHtml(jsonc)
+
+	json, err := process(true)
+	if err != nil {
+		panic(err)
+	}
+
+	b := PrettyJson([]byte(json))
+	json = strings.Replace(string(b), "\n", `<br/>`, -1)
+	jQuery(JsonArea).SetHtml(json)
+
 }
 
 func process(minimize bool) (json string, err error) {
@@ -87,15 +101,13 @@ func process(minimize bool) (json string, err error) {
 
 	json = string(buf.Bytes())
 
-	json = strings.Replace(json, "\n", `<br/>`, -1)
-
 	return
 }
 
 func PrettyJson(jsn []byte) (prettyJson []byte) {
 
 	var pretty bytes.Buffer
-	err := json.Indent(&pretty, jsn, "&nbsp;&nbsp;", "&nbsp;")
+	err := json.Indent(&pretty, jsn, "", "&nbsp;&nbsp;&nbsp;")
 	if err != nil {
 		return
 	}

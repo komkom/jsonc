@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<style>
+
+<style>
 
 .content_editable {
 
@@ -13,49 +14,84 @@
 	word-wrap: break-word;       /* Internet Explorer 5.5+ */
 }
 
+/*
 .container {
 	position:relative;
-	border: 1px solid blue;
+	border: 1px solid blue; 
 }
 
 .inlineLeft, .inlineRight {
 	position:absolute;
 	display: inline;
 }
+*/
 
-.inlineRight {
-	right:0;
+.container {
+
+	max-width: 400px;
+}
+
+.inline {
+	display: inline;
 }
 
 .vspace {
-	height:40px;
+	height:8px;
 	width:100%;
 	clear:both;
 }
+</style>
 
-		</style>
+<script src="https://code.jquery.com/jquery-2.x-git.js"></script>
+
+<script>
+
+$(document).ready(function(){
+
+	// used to remove formatting from pasted input
+	function handlePaste (e) {
+		var clipboardData, pastedData;
+
+		// Stop data actually being pasted into div
+		e.stopPropagation();
+		e.preventDefault();
+
+		// Get pasted data via clipboard API
+		clipboardData = e.clipboardData || window.clipboardData;
+		pastedData = clipboardData.getData('Text');
+
+		document.getElementById('edit').innerHTML = pastedData
+	}
+
+	document.getElementById('edit').addEventListener('paste', handlePaste);
+})
+
+</script>
 
 
-		<script src="https://code.jquery.com/jquery-2.x-git.js"></script>
 	</head>
 
 	<body>
-
-		<h2>jsonc</h2>
-
-		<div class="content_editable" contenteditable="true" id="edit">{ x1:x1 <br/> y:y <br/>}</div>
-
 		<div class="container">
-			<div class="inlineLeft"><input type="button" value="view"/></div>
-			`<div class="inlineRight">
-				<input type="button" id="tojson" value="tojson"/>
-				<input type="button" id="fmt" value="fmt"/>
+			<div>
+				<div class="inline">jsonc</div>
+				<input class="inline" type="button" id="fmt" value="fmt"/>
+				<input class="inline" type="button" id="clear" value="clear"/>
 			</div>
+				
+			<div class="vspace"></div>
+
+			<div class="content_editable" contenteditable="true" id="edit">{ <br/> x1:x1 <br/> y:y <br/>}</div>
+
+			<div class="vspace"></div>
+			<div class="vspace"></div>
+
+			<div class="inline">json</div>
+
+			<div class="vspace"></div>
+
+			<div id="editjson">...</div>
 		</div>
-
-		<div class="vspace"></div>
-
-		<div class="content_editable" contenteditable="true" id="editjson">some json</div>
 
 		<script src="/static/main.js"></script>
 
