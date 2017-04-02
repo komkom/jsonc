@@ -29,24 +29,7 @@ func main() {
 		resp.Write(config.C.IndexPage)
 	})
 
-	/*
-		http.HandleFunc(`/fmt`, func(resp http.ResponseWriter, req *http.Request) {
-
-			buf := bytes.Buffer{}
-			buf.ReadFrom(req.Body)
-
-			jcr, err := reader.New(&buf, true, " ")
-			if err != nil {
-				error404(resp)
-				return
-			}
-
-			io.Copy(resp, jcr)
-		})
-	*/
-
 	http.ListenAndServe(`:1199`, nil)
-
 }
 
 func error404(resp http.ResponseWriter) {

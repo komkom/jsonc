@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/gopherjs/gopherjs/js"
 	"github.com/gopherjs/jquery"
 	"github.com/komkom/jsonc/reader"
 )
@@ -15,20 +16,11 @@ var jQuery = jquery.NewJQuery
 const (
 	Fmt       = `input#fmt`
 	Clear     = `input#clear`
-	JsoncArea = `div#edit`
+	JsoncArea = `textarea#edit`
 	JsonArea  = `div#editjson`
 )
 
 func main() {
-
-	//show jQuery Version on console:
-	print("22 Your current jQuery version is: " + jQuery().Jquery)
-
-	jQuery(Clear).On(jquery.CLICK, func(e jquery.Event) {
-
-		jQuery(JsoncArea).SetHtml(``)
-		jQuery(JsonArea).SetHtml(``)
-	})
 
 	jQuery(JsoncArea).On(jquery.FOCUSOUT, func(e jquery.Event) {
 		load()
@@ -46,40 +38,27 @@ func load() {
 		panic(err)
 	}
 
-	jsonc = strings.Replace(jsonc, "\n", `<br/>`, -1)
-	jQuery(JsoncArea).SetHtml(jsonc)
+	jQuery(JsoncArea).SetVal(jsonc)
 
 	json, err := process(true)
 	if err != nil {
 		panic(err)
 	}
 
-	b := PrettyJson([]byte(json))
-	json = strings.Replace(string(b), "\n", `<br/>`, -1)
+	//b := PrettyJson([]byte(json))
+	json = strings.Replace(json, "\n", `<br/>`, -1)
 	jQuery(JsonArea).SetHtml(json)
 
+	js.Global.Call("initTextArea")
 }
 
 func process(minimize bool) (json string, err error) {
 
-	edit := jQuery(JsoncArea).Html()
-	print(`____i ` + edit)
-
-	edit = strings.Replace(edit, `<br>`, "\n", -1)
-
-	edit = strings.Replace(edit, `<div>\n</div>`, "\n", -1)
-
-	edit = strings.Replace(edit, `&nbsp;`, ` `, -1)
-
-	edit = strings.Replace(edit, `<div>`, "\n", -1)
-
-	edit = strings.Replace(edit, `</div>`, "", -1)
-
-	print(edit)
+	edit := jQuery(JsoncArea).Val()
 
 	r := strings.NewReader(edit)
 
-	jcr, err := reader.New(r, minimize, "&nbsp;&nbsp;")
+	jcr, err := reader.New(r, minimize, "  ")
 	if err != nil {
 		print("error 1")
 		return

@@ -1,4 +1,4 @@
 *.swp
 *.map
 bindata.go
-web/config/data
+web/config/data/static/main.js
