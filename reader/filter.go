@@ -586,6 +586,11 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 			}
 			r.hasComma = true
 
+			if f.format {
+				f.pushOut(',')
+				f.embed = true
+			}
+
 			goto next
 		}
 
@@ -601,13 +606,10 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 		}
 
 		if s.Type() != Array || !s.Open() {
-			if f.format && r.hasComma {
-				f.pushOut(',')
-				f.embed = true
-			}
-
 			if !f.format {
 				f.pushOut(',')
+			} else if !r.hasComma {
+				f.embed = true
 			}
 		}
 
