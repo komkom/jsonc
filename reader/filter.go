@@ -170,8 +170,6 @@ func (r *KeyState) Next(f *Filter) (err *errorf) {
 			return
 		}
 	}
-
-	return
 }
 
 type ValueState struct {
@@ -208,8 +206,6 @@ func (v *ValueState) Next(f *Filter) (err *errorf) {
 			return
 		}
 	}
-
-	return
 }
 
 type KeyNoQuoteState struct {
@@ -274,8 +270,6 @@ func (r *KeyNoQuoteState) Next(f *Filter) (err *errorf) {
 			return
 		}
 	}
-
-	return
 }
 
 type ValueNoQuoteState struct {
@@ -709,8 +703,8 @@ func dispatchComment(f *Filter, nlcount int, postHook func()) (shouldDispatch bo
 			f.pushState(&CommentMultiLineState{})
 			return
 		}
+		err = f.ring.Pop()
 
-		//err = errorF("invalid character (2) %v", f.ring.Position(), string(ru))
 		return
 	}
 
