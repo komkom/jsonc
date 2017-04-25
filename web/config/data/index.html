@@ -4,32 +4,43 @@
 <style>
 
 .container {
-	max-width: 400px;
+	white-space:nowrap;
+	overflow:hidden;
 }
 
 .inline {
 	display: inline;
+	vertical-align:top;
 }
 
 .vspace {
 	height:8px;
 	width:100%;
-	clear:both;
 }
 
-textarea {
-	border: 0 none white;
-	width:100%;
-	overflow: hidden;
-	padding: 0;
-	outline: none;
-	background-color: #D0D0D0;
+.editor {
+	max-width: 500px
+
+}
+
+.text{
+	height: 100%;
+	width: 100%;
+	-webkit-box-sizing: border-box; /* Safari/Chrome, other WebKit */
+	-moz-box-sizing: border-box;    /* Firefox, other Gecko */
+	box-sizing: border-box;         /* Opera/IE 8+ */
+}
+
+::selection {
+	background-color: LightCoral;
+	color: white;
 }
 
 </style>
 
 <script src="https://code.jquery.com/jquery-2.x-git.js"></script>
 <script src="/static/textarea.js"></script>
+<script src="/static/select.js"></script>
 
 <script>
 
@@ -44,7 +55,12 @@ $(function() {
 		$("#editjson").text("")
 
 		initTextArea();
+
 	});
+
+
+	var editor = document.getElementById('edit')
+		selectTextareaLine(editor,1)
 });
 
 </script>
@@ -56,14 +72,15 @@ $(function() {
 				<input class="inline" type="button" id="fmt" value="fmt"/>
 				<input class="inline" type="button" id="clear" value="clear"/>
 			</div>
-				
+			
 			<div class="vspace"></div>
 
-			<textarea id="edit">{ 
+			<div class="editor">	
+			<textarea class="text" id="edit">{ 
     x1:  x
     y:  y 
 }</textarea>
-
+</div>
 			<div class="vspace"></div>
 			<div class="vspace"></div>
 
