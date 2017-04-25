@@ -1,52 +1,20 @@
 <!DOCTYPE html>
 <html>
 	<head>
-<style>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no">
+		<link href="https://fonts.googleapis.com/css?family=Open+Sans:400,400i,700" rel="stylesheet">
+		<link rel="stylesheet" href="/static/styles.css">
+		<script src="https://code.jquery.com/jquery-2.x-git.js"></script>
+		<script src="/static/textarea.js"></script>
+		<script src="/static/select.js"></script>
+		<title>jsonc</title>
 
-.container {
-	white-space:nowrap;
-	overflow:hidden;
-}
+		<script>
 
-.inline {
-	display: inline;
-	vertical-align:top;
-}
-
-.vspace {
-	height:8px;
-	width:100%;
-}
-
-.editor {
-	max-width: 500px
-
-}
-
-.text{
-	height: 100%;
-	width: 100%;
-	-webkit-box-sizing: border-box; /* Safari/Chrome, other WebKit */
-	-moz-box-sizing: border-box;    /* Firefox, other Gecko */
-	box-sizing: border-box;         /* Opera/IE 8+ */
-}
-
-::selection {
-	background-color: LightCoral;
-	color: white;
-}
-
-</style>
-
-<script src="https://code.jquery.com/jquery-2.x-git.js"></script>
-<script src="/static/textarea.js"></script>
-<script src="/static/select.js"></script>
-
-<script>
-
-function selectEditorLine(line) { 
+function selectEditorLine(line) {
 	var editor = document.getElementById('edit')
-	selectTextareaLine(editor,line)
+		selectTextareaLine(editor,line)
 }
 
 $(function() {
@@ -57,41 +25,77 @@ $(function() {
 	$("#clear").click(function() {
 
 		$("#edit").val("")
-		$("#editjson").text("")
+			$("#editjson").text("")
 
-		initTextArea();
+			initTextArea();
 
 	});
 });
 
-</script>
+		</script>
+
+		<style>
+::selection {
+	background-color: LightCoral;
+	color: white;
+}
+
+		</style>
 	</head>
 	<body>
 		<div class="container">
-			<div>
-				<div class="inline">jsonc</div>
-				<input class="inline" type="button" id="fmt" value="fmt"/>
-				<input class="inline" type="button" id="clear" value="clear"/>
-			</div>
-			
-			<div class="vspace"></div>
 
-			<div class="editor">	
-			<textarea class="text" id="edit">{ 
-    x1:  x
-    y:  y 
-}</textarea>
+			<header>
+				<div class="logo">
+					<img src="/static/jsonc-logo.svg" alt="JsonC logo">
+					<h1>jsonc</h1>
+				</div>
+				<p>A Json config tool by <a href="https://github.com/komkom/" target="_blank">@komika</a></p>
+			</header>
 
-			<div class="vspace"></div>
-			<div id="errormsg"></div>
-			<div class="vspace"></div>
-</div>
-			<div class="vspace"></div>
-			<div class="vspace"></div>
+			<section class="example">
+				<div class="code-mess">
+					<span>Drop your json here:</span>
+					<textarea id="edit" rows="8" cols="80"></textarea>
+					<div id="format-button">Format</div>
+				</div>
+				<div class="code-neat" >
+					<span>Get your formatted json here:</span>
+					<pre id="editjson">
+  pre {
+      font-family: "Courier 10 Pitch", Courier, monospace;
+      font-size: 95%;
+      line-height: 140%;
+      white-space: pre;
+      white-space: pre-wrap;
+      white-space: -moz-pre-wrap;
+      white-space: -o-pre-wrap;
+  }
+					</pre>
+				</div>
+			</section>
 
-			<div>json</div>
-			<div class="vspace"></div>
-			<div style="word-wrap:break-word;" id="editjson">...</div>
+			<div class="error-box" id="errormsg"></div>
+
+			<section class="installation">
+				<h2>Installation</h2>
+				<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit:</p>
+				<pre>$ npm install jsonc</pre>
+				<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit</p>
+				<pre>$ jsonc myjson.json</pre>
+				<p>Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+			</section>
+
+			<footer>
+				<p>All rights reserved  <a href="https://github.com/komkom/jsonc" target="_blank">jsonc</a></p>
+				<a class="github-button" href="https://github.com/komkom/jsonc" data-icon="octicon-star" aria-label="Star komkom/jsonc on GitHub">Star</a>
+				<a class="github-button" href="https://github.com/komkom/jsonc/subscription" data-icon="octicon-eye" aria-label="Watch komkom/jsonc on GitHub">Watch</a>
+				<a class="github-button" href="https://github.com/komkom/jsonc/fork" data-icon="octicon-repo-forked" aria-label="Fork komkom/jsonc on GitHub">Fork</a>
+				<a class="github-button" href="https://github.com/komkom" aria-label="Follow @komkom on GitHub">Follow @komkom</a>
+			</footer>
+
 		</div>
+
+		<script async defer src="https://buttons.github.io/buttons.js"></script>
 	</body>
 </html>

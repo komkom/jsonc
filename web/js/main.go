@@ -14,10 +14,10 @@ import (
 var jQuery = jquery.NewJQuery
 
 const (
-	Fmt       = `input#fmt`
+	Fmt       = `div#format-button`
 	Clear     = `input#clear`
 	JsoncArea = `textarea#edit`
-	JsonArea  = `div#editjson`
+	JsonArea  = `pre#editjson`
 	ErrorMsg  = `div#errormsg`
 )
 

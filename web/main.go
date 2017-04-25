@@ -5,8 +5,16 @@ package main
 import (
 	"net/http"
 	"path"
+	"strings"
 
 	"github.com/komkom/jsonc/web/config"
+)
+
+var (
+	mimetypes = map[string]string{
+		`css`: `text/css`,
+		`svg`: `image/svg+xml`,
+	}
 )
 
 func main() {
@@ -19,6 +27,12 @@ func main() {
 		if err != nil {
 			error404(resp)
 			return
+		}
+
+		for k, v := range mimetypes {
+			if strings.HasSuffix(req.URL.Path, k) {
+				resp.Header().Add("Content-Type", v)
+			}
 		}
 
 		resp.Write(b)

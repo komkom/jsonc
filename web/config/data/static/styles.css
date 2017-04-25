@@ -1,0 +1,160 @@
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+
+h2, h3 {
+  margin: 2rem 0 1rem 0;
+}
+
+h2 {
+  font-weight: normal;
+}
+
+p {
+  margin: 1em 0;
+}
+
+body {
+  font-family: 'Open Sans', sans-serif;
+}
+
+.container {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.logo {
+  margin: 2rem auto 0.5rem auto;
+  width: 15rem;
+}
+
+.logo img {
+  width: 100%;
+}
+
+.example {
+  display: flex;
+  flex-direction: column;
+  padding-top: 1rem;
+}
+
+.example span {
+  font-size: 0.9rem;
+}
+
+.code-mess {
+  margin-right: 0;
+  position: relative;
+}
+
+.code-neat {
+  margin-left: 0;
+  margin-top: 1rem;
+}
+.code-mess pre, .code-neat pre {
+  font-family: "Courier 10 Pitch", Courier, monospace;
+  font-size: 95%;
+  line-height: 140%;
+  white-space: pre;
+  white-space: pre-wrap;
+  white-space: -moz-pre-wrap;
+  white-space: -o-pre-wrap;
+  border: 1px solid #eaeaea;
+  background-color: #fafafa;
+  padding: 1rem;
+  height: 18rem;
+  overflow: auto;
+}
+
+@media screen and (min-width: 600px) {
+  .example {
+    flex-direction: row;
+  }
+  .code-mess {
+    margin-right: 0.5rem;
+    width: 50%;
+  }
+  .code-neat {
+    margin-left: 0.5rem;
+    margin-top: 0;
+    width: 50%;
+  }
+}
+
+textarea {
+  border: 0;
+  border: 1px solid #eaeaea;
+  background-color: #fafafa;
+  white-space: pre;
+  white-space: pre-wrap;
+  white-space: -moz-pre-wrap;
+  white-space: -o-pre-wrap;
+  font-family: "Courier 10 Pitch", Courier, monospace;
+  font-size: 95%;
+  line-height: 140%;
+  padding: 1rem;
+  height: 18rem;
+  width: 100%;
+  margin-top: 8px;
+}
+
+#format-button {
+  position: absolute;
+  top: 2.4rem;
+  right: 0.5rem;
+  background-color: rgba(0,0,0,0.7);
+  color: #FFF;
+  padding: 0.3rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+#format-button:hover {
+  background-color: rgba(0,0,0,1);
+}
+
+pre {
+  font-family: "Courier 10 Pitch", Courier, monospace;
+  font-size: 95%;
+  line-height: 140%;
+  white-space: pre;
+  white-space: pre-wrap;
+  white-space: -moz-pre-wrap;
+  white-space: -o-pre-wrap;
+  border: 1px solid #eaeaea;
+  background-color: #fafafa;
+  margin: 0.5rem 0;
+  padding: 0.5rem 1rem;
+}
+
+.error-box {
+  background-color: #fff3f3;
+  border: 1px solid #f7a8a8;
+  margin-top: 0.5rem;
+  padding: 1rem;
+  font-size: 0.9rem;
+}
+
+.installation {
+  margin-top: 2rem;
+}
+
+footer {
+  margin-top: 2rem;
+  border-top: 1px solid #eaeaea;
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.8rem;
+}

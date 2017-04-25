@@ -7,6 +7,7 @@ type Config struct {
 }
 
 func (c Config) StaticFile(name string) ([]byte, error) {
+
 	return Asset(`data/static/` + name)
 }
 
