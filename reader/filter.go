@@ -233,11 +233,12 @@ func (r *KeyNoQuoteState) Next(f *Filter) (err *errorf) {
 		if !r.escaped {
 
 			// check if comments need to be dispatched
-			dispatch, cerr := dispatchComment(f, 0, func() {
+			dispatch, cerr := dispatchComment(f, 0, func() *errorf {
 				if !f.format {
 					f.pushOut('"')
 				}
 				r.Close()
+				return nil
 			})
 			if cerr != nil {
 				err = cerr
@@ -284,10 +285,11 @@ func (o *ValueNoQuoteState) Type() TokenType {
 
 func (r *ValueNoQuoteState) Next(f *Filter) (err *errorf) {
 
-	//var escaped bool
-	//var cval []byte
+	renderValue := func() (err *errorf) {
 
-	renderValue := func() {
+		if len(r.cval) == 0 {
+			return errorF("empty no quote state", f.ring.Position())
+		}
 
 		r.Close()
 
@@ -311,15 +313,18 @@ func (r *ValueNoQuoteState) Next(f *Filter) (err *errorf) {
 		f.pushOut('"')
 		f.pushBytes(r.cval)
 		f.pushOut('"')
+
+		return
 	}
 
 	for {
 		ru := f.ring.Peek()
 
 		if !r.escaped {
+
 			// check if comments need to be dispatched
-			dispatch, cerr := dispatchComment(f, 0, func() {
-				renderValue()
+			dispatch, cerr := dispatchComment(f, 0, func() *errorf {
+				return renderValue()
 			})
 			if cerr != nil {
 				err = cerr
@@ -331,8 +336,8 @@ func (r *ValueNoQuoteState) Next(f *Filter) (err *errorf) {
 			}
 
 			if unicode.IsSpace(ru) || ru == ',' || ru == '}' || ru == ']' {
-				renderValue()
-				return
+
+				return renderValue()
 			}
 		}
 
@@ -651,7 +656,7 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 	return
 }
 
-func dispatchComment(f *Filter, nlcount int, postHook func()) (shouldDispatch bool, err *errorf) {
+func dispatchComment(f *Filter, nlcount int, postHook func() *errorf) (shouldDispatch bool, err *errorf) {
 
 	ru := f.ring.Peek()
 
@@ -669,7 +674,10 @@ func dispatchComment(f *Filter, nlcount int, postHook func()) (shouldDispatch bo
 		if ru == '/' {
 
 			if postHook != nil {
-				postHook()
+				err = postHook()
+				if err != nil {
+					return
+				}
 			}
 
 			shouldDispatch = true
