@@ -18,6 +18,7 @@ const (
 	Clear     = `input#clear`
 	JsoncArea = `textarea#edit`
 	JsonArea  = `div#editjson`
+	ErrorMsg  = `div#errormsg`
 )
 
 func main() {
@@ -33,26 +34,42 @@ func main() {
 
 func load() {
 
-	jsonc, err := process(false)
+	jQuery(ErrorMsg).SetText(``)
+
+	jsonc, errpos, err := process(false)
 	if err != nil {
-		panic(err)
+
+		edit := jQuery(JsoncArea).Val()
+
+		// get the line of the error
+		errline := strings.Count(edit[:errpos], "\n")
+
+		idx := strings.Index(edit[errpos:], "\n")
+
+		if idx == -1 {
+			jQuery(ErrorMsg).SetText(`error parsing: ` + edit[errpos:])
+		} else {
+			jQuery(ErrorMsg).SetText(`error parsing: ` + edit[errpos:errpos+idx])
+		}
+
+		js.Global.Call("selectEditorLine", errline)
+		return
 	}
 
 	jQuery(JsoncArea).SetVal(jsonc)
 
-	json, err := process(true)
+	json, _, err := process(true)
 	if err != nil {
 		panic(err)
 	}
 
-	//b := PrettyJson([]byte(json))
 	json = strings.Replace(json, "\n", `<br/>`, -1)
 	jQuery(JsonArea).SetHtml(json)
 
 	js.Global.Call("initTextArea")
 }
 
-func process(minimize bool) (json string, err error) {
+func process(minimize bool) (json string, errpos int, err error) {
 
 	edit := jQuery(JsoncArea).Val()
 
@@ -72,6 +89,7 @@ func process(minimize bool) (json string, err error) {
 	jcrErr := f.Error()
 	if jcrErr != nil && jcrErr.Err() != io.EOF {
 		err = jcrErr.Err()
+		errpos = jcrErr.Position()
 		print("error 2 " + err.Error())
 		return
 	}

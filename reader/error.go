@@ -11,6 +11,10 @@ func (e *errorf) Err() error {
 	return e.error
 }
 
+func (e *errorf) Position() int {
+	return e.position
+}
+
 func cerror(err error) *errorf {
 	return &errorf{err, -1}
 }

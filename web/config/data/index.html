@@ -44,6 +44,11 @@
 
 <script>
 
+function selectEditorLine(line) { 
+	var editor = document.getElementById('edit')
+	selectTextareaLine(editor,line)
+}
+
 $(function() {
 
 	$.getScript("static/main.js");
@@ -57,10 +62,6 @@ $(function() {
 		initTextArea();
 
 	});
-
-
-	var editor = document.getElementById('edit')
-		selectTextareaLine(editor,1)
 });
 
 </script>
@@ -80,6 +81,10 @@ $(function() {
     x1:  x
     y:  y 
 }</textarea>
+
+			<div class="vspace"></div>
+			<div id="errormsg"></div>
+			<div class="vspace"></div>
 </div>
 			<div class="vspace"></div>
 			<div class="vspace"></div>
