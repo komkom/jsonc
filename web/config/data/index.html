@@ -50,44 +50,62 @@ $(function() {
 					<img src="/static/jsonc-logo.svg" alt="JsonC logo">
 					<h1>jsonc</h1>
 				</div>
-				<p>A Json like file format with comments (<a href="https://github.com/komkom/" target="_blank">code</a>)</p>
+				<p>A Json like file format with comments (<a href="https://github.com/komkom/jsonc" target="_blank">project</a>)</p>
 			</header>
 
 			<section class="example">
 				<div class="code-mess">
 					<span>Drop your jsonc here:</span>
-					<textarea id="edit" rows="8" cols="80"></textarea>
+					<textarea id="edit" rows="8" cols="80">
+{
+/*
+jsonc example   
+hit Format and check the json output 
+*/
+
+// forgiving syntax
+hey:  [this  needs  no  commas]
+
+// unquoted values
+give:  [it,  a,  shot]
+
+/* and lots comments :) */
+
+// try it for yourself
+
+"this":  {  
+"is":  "also",  
+"just":  "a"  
+},
+"json" : "formatter"
+}
+					</textarea>
 					<div id="format-button">Format</div>
 				</div>
 				<div class="code-neat" >
 					<span>Get your formatted json here:</span>
-					<pre id="editjson">
-  pre {
-      font-family: "Courier 10 Pitch", Courier, monospace;
-      font-size: 95%;
-      line-height: 140%;
-      white-space: pre;
-      white-space: pre-wrap;
-      white-space: -moz-pre-wrap;
-      white-space: -o-pre-wrap;
-  }
-					</pre>
+					<pre id="editjson"></pre>
 				</div>
 			</section>
 
 			<div class="error-box" id="errormsg"></div>
 
 			<section class="installation">
-				<h2>Installation</h2>
-				<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit:</p>
-				<pre>$ npm install jsonc</pre>
-				<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit</p>
-				<pre>$ jsonc myjson.json</pre>
-				<p>Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+				<h2>Proposal</h2>
+				<p>Jsonc is a simplified json format which allows comments and unquoted values delimited by whitespace. A jsonc formatted file can be transformed to a json file. Comments will be stripped out and quotes added.</p>
+
+				<p>Any valid json is also a valid jsonc - but this goes only in one direction.</p>
+
+				<h2>Why</h2>
+				<p>Json formatted files could be very handy to be used as config files. But the lack of comments and the redundancy of the format hurts readability. Standard formatting like <a href="https://golang.org/cmd/gofmt/" target="_blank">gofmt</a> would also be very handy.</p>
+
+
+				<h2>Disclamer</h2>
+				<p>This is just a proposal. Any help like bugfixing, improvements or suggestions are welcome.</p>
 			</section>
 
 			<footer>
-				<p><a href="https://github.com/komkom/jsonc" target="_blank">jsonc</a></p>
+				<p><a href="https://github.com/komkom/jsonc" target="_blank">get involved</a></p>
 				<a class="github-button" href="https://github.com/komkom/jsonc" data-icon="octicon-star" aria-label="Star komkom/jsonc on GitHub">Star</a>
 				<a class="github-button" href="https://github.com/komkom/jsonc/subscription" data-icon="octicon-eye" aria-label="Watch komkom/jsonc on GitHub">Watch</a>
 				<a class="github-button" href="https://github.com/komkom/jsonc/fork" data-icon="octicon-repo-forked" aria-label="Fork komkom/jsonc on GitHub">Fork</a>

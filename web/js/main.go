@@ -63,7 +63,9 @@ func load() {
 		panic(err)
 	}
 
-	json = strings.Replace(json, "\n", `<br/>`, -1)
+	pj := PrettyJson([]byte(json))
+
+	json = strings.Replace(string(pj), "\n", `<br/>`, -1)
 	jQuery(JsonArea).SetHtml(json)
 
 	js.Global.Call("initTextArea")
