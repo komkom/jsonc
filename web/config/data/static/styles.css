@@ -5,6 +5,10 @@
   border: 0;
 }
 
+h1 {
+  font-size: 3rem;
+}
+
 h2, h3 {
   margin: 2rem 0 1rem 0;
 }
@@ -21,6 +25,35 @@ body {
   font-family: 'Open Sans', sans-serif;
 }
 
+a {
+  color: #ce3309;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 1rem;
+  height: 360px;
+  width: 100%;
+  background-image: url(../static/header.png);
+  background-repeat: repeat-x;
+  background-size: 1300px 400px;
+  background-position: top center;
+  }
+
+.logo {
+  margin: 0 auto;
+  width: 11rem;
+  padding-top: 2rem;
+}
+
+.logo img {
+  width: 100%;
+}
+
+.intro {
+  text-align: center;
+}
+
 .container {
   width: 100%;
   max-width: 980px;
@@ -28,25 +61,10 @@ body {
   padding: 0 1rem;
 }
 
-header {
-  text-align: center;
-  margin-bottom: 1rem;
-  border-bottom: 1px solid #eaeaea;
-}
-
-.logo {
-  margin: 2rem auto 0.5rem auto;
-  width: 15rem;
-}
-
-.logo img {
-  width: 100%;
-}
-
 .example {
   display: flex;
   flex-direction: column;
-  padding-top: 1rem;
+  padding-top: 2rem;
 }
 
 .example span {
@@ -62,7 +80,7 @@ header {
   margin-left: 0;
   margin-top: 1rem;
 }
-.code-mess pre, .code-neat pre {
+.code-mess textarea, .code-neat pre {
   font-family: "Courier 10 Pitch", Courier, monospace;
   font-size: 95%;
   line-height: 140%;
@@ -73,7 +91,9 @@ header {
   border: 1px solid #eaeaea;
   background-color: #fafafa;
   padding: 1rem;
+  min-height: 18rem;
   height: 18rem;
+  max-height: 18rem !important;
   overflow: auto;
 }
 
@@ -112,7 +132,7 @@ textarea {
 #format-button {
   position: absolute;
   top: 2.4rem;
-  right: 0.5rem;
+  right: 1.5rem;
   background-color: rgba(0,0,0,0.7);
   color: #FFF;
   padding: 0.3rem;
@@ -145,6 +165,7 @@ pre {
   margin-top: 0.5rem;
   padding: 1rem;
   font-size: 0.9rem;
+  display: none;
 }
 
 .installation {

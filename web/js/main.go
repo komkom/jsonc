@@ -36,6 +36,9 @@ func load() {
 
 	jQuery(ErrorMsg).SetText(``)
 
+	// hide error
+	jQuery(ErrorMsg).Hide()
+
 	jsonc, errpos, err := process(false)
 	if err != nil {
 
@@ -45,6 +48,9 @@ func load() {
 		errline := strings.Count(edit[:errpos], "\n")
 
 		idx := strings.Index(edit[errpos:], "\n")
+
+		// show error
+		jQuery(ErrorMsg).Show()
 
 		if idx == -1 {
 			jQuery(ErrorMsg).SetText(`error parsing: ` + edit[errpos:])

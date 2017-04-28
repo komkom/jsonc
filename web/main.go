@@ -14,6 +14,7 @@ var (
 	mimetypes = map[string]string{
 		`css`: `text/css`,
 		`svg`: `image/svg+xml`,
+		`png`: `image/png`,
 	}
 )
 
