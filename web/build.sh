@@ -10,3 +10,6 @@ then
 fi
 
 mv main.js static/main.js
+
+cp index.html ../../komkom.github.io
+cp -r static ../../komkom.github.io
