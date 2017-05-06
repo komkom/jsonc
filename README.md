@@ -1,10 +1,27 @@
 # jsonc
-json config.
+[give it a try](https://komkom.github.io/)
 
 ## Install
 
 ```bash
 go get github.com/komkom/jsonc/...
-go get -u github.com/jteeuwen/go-bindata/...
-go get github.com/tutti-ch/continuous/...
 ```
+
+## Use
+
+Prints the formatted jsonc file.
+```bash
+jsonc < somefile.jsonc 
+```
+
+Prints the minified json.
+```bash
+jsonc -m < somefile.jsonc 
+```
+
+To format a json.
+```bash
+jsonc -m < somefile.json
+```
+
+The formatting behaviour tries to mimic gofmt. Any suggestions, help, fixes welcome.
