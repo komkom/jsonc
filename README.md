@@ -1,4 +1,5 @@
-# [jsonc](https://komkom.github.io/)
+# jsonc
+[give it a try](https://komkom.github.io/)
 
 ## Install
 
