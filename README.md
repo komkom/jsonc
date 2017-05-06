@@ -9,7 +9,7 @@ go get -u github.com/jteeuwen/go-bindata/...
 go get github.com/tutti-ch/continuous/...
 ```
 
-## Usage
+## Use
 
 ```bash
 jsonc < somefile.jsonc 
