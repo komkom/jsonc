@@ -1,5 +1,4 @@
-# jsonc
-json config.
+# [jsonc](https://komkom.github.io/)
 
 ## Install
 
