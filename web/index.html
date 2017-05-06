@@ -4,10 +4,11 @@
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no">
 		<link href="https://fonts.googleapis.com/css?family=Open+Sans:400,400i,700" rel="stylesheet">
-		<link rel="stylesheet" href="/static/styles.css">
+		<link rel="stylesheet" href="static/styles.css">
 		<script src="https://code.jquery.com/jquery-2.x-git.js"></script>
-		<script src="/static/textarea.js"></script>
-		<script src="/static/select.js"></script>
+		<script src="static/textarea.js"></script>
+		<script src="static/select.js"></script>
+		<script src="static/main.js" defer></script>
 		<title>jsonc</title>
 
 		<script>
@@ -19,7 +20,7 @@ function selectEditorLine(line) {
 
 $(function() {
 
-	$.getScript("static/main.js");
+	//$.getScript("static/main.js");
 	initTextArea();
 
 	$("#clear").click(function() {
@@ -45,7 +46,7 @@ $(function() {
 	<body>
 		<header>
 			<div class="logo">
-				<img src="/static/jsonc-logo.svg" alt="JsonC logo">
+				<img src="static/jsonc-logo.svg" alt="JsonC logo">
 			</div>
 		</header>
 

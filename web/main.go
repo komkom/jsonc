@@ -1,53 +1,122 @@
-//go:generate gopherjs build js/main.go
-//go:generate mv main.js config/data/static
 package main
 
 import (
-	"net/http"
-	"path"
+	"bytes"
+	"encoding/json"
+	"io"
 	"strings"
 
-	"github.com/komkom/jsonc/web/config"
+	"github.com/gopherjs/gopherjs/js"
+	"github.com/gopherjs/jquery"
+	"github.com/komkom/jsonc/reader"
 )
 
-var (
-	mimetypes = map[string]string{
-		`css`: `text/css`,
-		`svg`: `image/svg+xml`,
-		`png`: `image/png`,
-	}
+var jQuery = jquery.NewJQuery
+
+const (
+	Fmt       = `div#format-button`
+	Clear     = `input#clear`
+	JsoncArea = `textarea#edit`
+	JsonArea  = `pre#editjson`
+	ErrorMsg  = `div#errormsg`
 )
 
 func main() {
 
-	// static files
-	http.HandleFunc(`/static/`, func(resp http.ResponseWriter, req *http.Request) {
-
-		_, f := path.Split(req.URL.Path)
-		b, err := config.C.StaticFile(f)
-		if err != nil {
-			error404(resp)
-			return
-		}
-
-		for k, v := range mimetypes {
-			if strings.HasSuffix(req.URL.Path, k) {
-				resp.Header().Add("Content-Type", v)
-			}
-		}
-
-		resp.Write(b)
+	jQuery(JsoncArea).On(jquery.FOCUSOUT, func(e jquery.Event) {
+		load()
 	})
 
-	http.HandleFunc(`/index.html`, func(resp http.ResponseWriter, req *http.Request) {
-
-		resp.Write(config.C.IndexPage)
+	jQuery(Fmt).On(jquery.CLICK, func(e jquery.Event) {
+		load()
 	})
-
-	http.ListenAndServe(`:1199`, nil)
 }
 
-func error404(resp http.ResponseWriter) {
-	resp.WriteHeader(http.StatusNotFound)
-	resp.Write(config.C.ErrorPage)
+func load() {
+
+	jQuery(ErrorMsg).SetText(``)
+
+	// hide error
+	jQuery(ErrorMsg).Hide()
+
+	jsonc, errpos, err := process(false)
+	if err != nil {
+
+		edit := jQuery(JsoncArea).Val()
+
+		// get the line of the error
+		errline := strings.Count(edit[:errpos], "\n")
+
+		idx := strings.Index(edit[errpos:], "\n")
+
+		// show error
+		jQuery(ErrorMsg).Show()
+
+		if idx == -1 {
+			jQuery(ErrorMsg).SetText(`error parsing: ` + edit[errpos:])
+		} else {
+			jQuery(ErrorMsg).SetText(`error parsing: ` + edit[errpos:errpos+idx])
+		}
+
+		js.Global.Call("selectEditorLine", errline)
+		return
+	}
+
+	jQuery(JsoncArea).SetVal(jsonc)
+
+	json, _, err := process(true)
+	if err != nil {
+		panic(err)
+	}
+
+	pj := PrettyJson([]byte(json))
+
+	json = strings.Replace(string(pj), "\n", `<br/>`, -1)
+	jQuery(JsonArea).SetHtml(json)
+
+	js.Global.Call("initTextArea")
+}
+
+func process(minimize bool) (json string, errpos int, err error) {
+
+	edit := jQuery(JsoncArea).Val()
+
+	r := strings.NewReader(edit)
+
+	jcr, err := reader.New(r, minimize, "  ")
+	if err != nil {
+		print("error 1")
+		return
+	}
+
+	buf := &bytes.Buffer{}
+
+	io.Copy(buf, jcr)
+
+	f := jcr.(*reader.Filter)
+	jcrErr := f.Error()
+	if jcrErr != nil && jcrErr.Err() != io.EOF {
+		err = jcrErr.Err()
+		errpos = jcrErr.Position()
+		print("error 2 " + err.Error())
+		return
+	}
+
+	print(`success`)
+
+	json = string(buf.Bytes())
+
+	return
+}
+
+func PrettyJson(jsn []byte) (prettyJson []byte) {
+
+	var pretty bytes.Buffer
+	err := json.Indent(&pretty, jsn, "", "&nbsp;&nbsp;&nbsp;")
+	if err != nil {
+		return
+	}
+
+	prettyJson = pretty.Bytes()
+	return
 }
