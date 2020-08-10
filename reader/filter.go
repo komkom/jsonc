@@ -194,7 +194,13 @@ func (v *ValueState) Next(f *Filter) error {
 			escaped = true
 		}
 
-		f.pushOut(ru)
+		if !f.format && ru == '\n' {
+			f.pushOut('\\')
+			f.pushOut('n')
+
+		} else {
+			f.pushOut(ru)
+		}
 
 		err := f.ring.Advance()
 		if err != nil {

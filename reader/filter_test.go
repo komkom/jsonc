@@ -16,84 +16,17 @@ type TestJson struct {
 	ExpectedStringInError string
 }
 
-func JsonToFormat() []string {
-
-	return []string{
-		`{
-
-			zz:uu /* test comment */
-
-
-			x:x
-// some comment
-	y:y 
-	
-	/* here wie
-have some thing */
-	z:z
-	arr: [
-
-	1,2,3,4,5,6, {
-		
-		x/*an other*/: /*some comment*/  x /* about that */, t:[x,13,5, // and this
-	6,       /* about this seven */ 7,
-
-
-
-
-	8,9,["4",5,7,8,9],2,3,
-
-	4,5]}		
-	], u:
-	{x:
-y}
-}
-`,
-		`
-// test
-
-// application config data
-{
-	api : {
-
-		// test
-		// tets
-
-		// test this
-		// qa configuration against a local server
-		qa : {
-
-			// some comment here
-			// some comment here
-			baseurl : test // "http://localhost:1234/myapi" /* use non ssl connection */
-	
-			headers : [ // ugly header setup to make it work on local
-			{ key: auth  value: sometoken /* auto token for dummy user */ },
-			{ key: source value: local }
-			]
-			x : { x: y }
-		}
-		live : {
-		
-			// this should redirect to myotherdomain.com
-			baseurl : "https://api.mydomain.com"
-
-			headers /* test */  : [
-			{ key : auth,  value : someothertoken}, // iiiii
-			{ key :  source, value : remote}
-			]
-		}
-	}
-}
-`,
-	}
-
-}
-
 func JsonData() []TestJson {
 
 	return []TestJson{
+		{
+			JsonCString: `{ give:  "[it a shot]
 
+    /* and lots of comments :) */
+
+    now?:  what" }`,
+			ExpectedJsonString: `{"give":"[it a shot]\n\n    /* and lots of comments :) */\n\n    now?:  what"}`,
+		},
 		{
 			JsonCString:        `{x:x}`,
 			ExpectedJsonString: `{"x":"x"}`,
