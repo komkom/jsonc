@@ -63,19 +63,18 @@ func (r *Ring) Advance() error {
 	return nil
 }
 
-func (r *Ring) fill() (err error) {
+func (r *Ring) fill() error {
 	ru, _, err := r.readRune()
 	if err != nil {
-		return
+		return err
 	}
 
 	r.buf = append(r.buf, ru)
 	r.absPosition += 1
-	return
+	return nil
 }
 
 func (r *Ring) Peek() rune {
-
 	return r.buf[r.position]
 }
 
