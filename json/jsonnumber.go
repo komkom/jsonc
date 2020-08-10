@@ -103,6 +103,5 @@ func IsNumber(value string) bool {
 	}
 
 	return (s == Digit && strings.ContainsRune(Numbers, lastRune)) ||
-		s == PlusMinus ||
 		s == ZeroStart
 }

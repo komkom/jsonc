@@ -23,45 +23,53 @@ func TestNumbers(t *testing.T) {
 	}
 
 	numberTests := []NumberTest{
-		NumberTest{
+		{
 			ShouldBeValid: false,
 			N:             `09038749`,
 		},
-		NumberTest{
+		{
 			ShouldBeValid: true,
 			N:             `9038749`,
 		},
-		NumberTest{
+		{
 			ShouldBeValid: true,
 			N:             `0.9038749`,
 		},
-		NumberTest{
+		{
 			ShouldBeValid: false,
 			N:             `0..9038749`,
 		},
-		NumberTest{
+		{
 			ShouldBeValid: true,
 			N:             `0.903e8749`,
 		},
-		NumberTest{
+		{
 			ShouldBeValid: false,
 			N:             `0.9038ee749`,
 		},
-		NumberTest{
+		{
 			ShouldBeValid: true,
 			N:             `-9038749`,
 		},
-		NumberTest{
+		{
 			ShouldBeValid: true,
 			N:             `-0.9038749`,
 		},
-		NumberTest{
+		{
 			ShouldBeValid: false,
 			N:             `012435.9038749`,
 		},
-		NumberTest{
+		{
 			ShouldBeValid: true,
 			N:             `12435.9038749`,
+		},
+		{
+			ShouldBeValid: false,
+			N:             `0e`,
+		},
+		{
+			ShouldBeValid: true,
+			N:             `0`,
 		},
 	}
 
