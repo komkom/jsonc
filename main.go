@@ -1,13 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/alecthomas/kingpin"
 	"github.com/komkom/jsonc/reader"
 )
@@ -91,14 +91,13 @@ func process(dir string, files []os.FileInfo, minimize bool) error {
 
 func main() {
 	kingpin.Parse()
-	log.SetOutput(os.Stdout)
 
 	if *path != `` {
 
 		check := func(err error) {
 
 			if err != nil {
-				log.Infof("path: %v error: %v", *path, err)
+				fmt.Printf("path: %v error: %v", *path, err)
 				os.Exit(1)
 			}
 		}
@@ -134,7 +133,7 @@ func main() {
 
 		r, err := reader.New(os.Stdin, *minimize, " ")
 		if err != nil {
-			log.Infof("no input stream, error: %v", err)
+			fmt.Printf("no input stream, error: %v", err)
 			os.Exit(1)
 		}
 

@@ -32,5 +32,5 @@ func errorF(formatter string, position int, args ...interface{}) *errorf {
 }
 
 func errorFmt(formatter string, args ...interface{}) *errorf {
-	return &errorf{fmt.Errorf(formatter, args), -1}
+	return &errorf{fmt.Errorf(formatter, args...), -1}
 }

@@ -232,7 +232,7 @@ func TestJsonParser2(t *testing.T) {
 		if d.ExpectedStringInError != `` {
 
 			if err == nil {
-				t.Fatalf("idx: %v no error found containing: %v: %v", idx, d.ExpectedStringInError)
+				t.Fatalf("idx: %v no error found containing: %v", idx, d.ExpectedStringInError)
 				return
 			}
 
