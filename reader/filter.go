@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"io"
 	"unicode"
-
-	"github.com/komkom/jsonc/json"
 )
 
 type TokenType int
@@ -295,7 +293,7 @@ func (r *ValueNoQuoteState) Next(f *Filter) (err *errorf) {
 
 		// check if quotes are not needed
 		v := string(r.cval)
-		if json.IsNumber(v) ||
+		if IsNumber(v) ||
 			v == `true` ||
 			v == `false` ||
 			v == `null` {
