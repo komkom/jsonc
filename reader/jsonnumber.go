@@ -1,11 +1,11 @@
-package json
+package reader
 
 import "strings"
 
-type State int
+type NumberState int
 
 const (
-	Root State = iota
+	NumberRoot NumberState = iota
 	ZeroStart
 	Digit
 	PlusMinus
@@ -22,7 +22,7 @@ func IsNumber(value string) bool {
 		return false
 	}
 
-	s := Root
+	s := NumberRoot
 
 	var hasDot bool
 	var lastRune rune
@@ -31,7 +31,7 @@ func IsNumber(value string) bool {
 		lastRune = v
 
 		switch s {
-		case Root:
+		case NumberRoot:
 
 			if v == '-' {
 				break

@@ -1,4 +1,4 @@
-package json
+package reader
 
 import "testing"
 
