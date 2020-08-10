@@ -353,8 +353,6 @@ func (r *ValueNoQuoteState) Next(f *Filter) (err *errorf) {
 			return
 		}
 	}
-
-	return
 }
 
 type ObjectState struct {
@@ -527,8 +525,6 @@ func (o *ObjectState) Next(f *Filter) (err *errorf) {
 			return
 		}
 	}
-
-	return
 }
 
 type ArrayState struct {
@@ -652,8 +648,6 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 			return
 		}
 	}
-
-	return
 }
 
 func dispatchComment(f *Filter, nlcount int, postHook func() *errorf) (shouldDispatch bool, err *errorf) {
@@ -753,8 +747,6 @@ func (c *CommentState) Next(f *Filter) (err *errorf) {
 			return
 		}
 	}
-
-	return
 }
 
 type CommentMultiLineState struct {
@@ -819,8 +811,6 @@ func (c *CommentMultiLineState) Next(f *Filter) (err *errorf) {
 			return
 		}
 	}
-
-	return
 }
 
 func (f *Filter) Read(p []byte) (n int, err error) {
