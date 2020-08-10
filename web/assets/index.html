@@ -4,49 +4,23 @@
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no">
 		<link href="https://fonts.googleapis.com/css?family=Open+Sans:400,400i,700" rel="stylesheet">
-		<link rel="stylesheet" href="static/styles.css">
+		<link rel="stylesheet" href="styles.css">
 		<script src="https://code.jquery.com/jquery-2.x-git.js"></script>
-		<script src="static/textarea.js"></script>
-		<script src="static/select.js"></script>
-		<script src="static/main.js" defer></script>
+		<script src="wasm_exec.js"></script>
+        <script>
+            const go = new Go();
+            WebAssembly.instantiateStreaming(fetch("json.wasm"), go.importObject).then((result) => {
+                go.run(result.instance);
+            });
+        </script>
 		<title>jsonc</title>
 
-		<script>
 
-function selectEditorLine(line) {
-	var editor = document.getElementById('edit')
-		selectTextareaLine(editor,line)
-}
-
-$(function() {
-
-	//$.getScript("static/main.js");
-	initTextArea();
-
-	$("#clear").click(function() {
-
-		$("#edit").val("")
-			$("#editjson").text("")
-
-			initTextArea();
-
-	});
-});
-
-		</script>
-
-		<style>
-::selection {
-	background-color: LightCoral;
-	color: white;
-}
-
-		</style>
 	</head>
 	<body>
 		<header>
 			<div class="logo">
-				<img src="static/jsonc-logo.svg" alt="JsonC logo">
+				<img src="jsonc-logo.svg" alt="JsonC logo">
 			</div>
 		</header>
 
@@ -82,7 +56,7 @@ $(function() {
 						"json" : "formatter"
 						}
 					</textarea>
-					<div id="format-button">Format</div>
+					<div id="format-button" onclick="format()">Format</div>
 				</div>
 				<div class="code-neat" >
 					<span>Get your formatted json here:</span>

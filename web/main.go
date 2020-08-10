@@ -4,83 +4,90 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"strconv"
 	"strings"
+	"syscall/js"
 
-	"github.com/gopherjs/gopherjs/js"
-	"github.com/gopherjs/jquery"
 	"github.com/komkom/jsonc/reader"
 )
 
-var jQuery = jquery.NewJQuery
+var Document = js.Global().Get("document")
 
 const (
 	Fmt       = `div#format-button`
 	Clear     = `input#clear`
-	JsoncArea = `textarea#edit`
-	JsonArea  = `pre#editjson`
-	ErrorMsg  = `div#errormsg`
+	JsoncArea = `edit`
+	JsonArea  = `editjson`
+	ErrorMsg  = `errormsg`
 )
 
 func main() {
 
-	jQuery(JsoncArea).On(jquery.FOCUSOUT, func(e jquery.Event) {
+	js.Global().Set(`format`, js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		load()
-	})
+		return nil
+	}))
 
-	jQuery(Fmt).On(jquery.CLICK, func(e jquery.Event) {
-		load()
-	})
+	<-make(chan struct{})
 }
 
 func load() {
 
-	jQuery(ErrorMsg).SetText(``)
-
-	// hide error
-	jQuery(ErrorMsg).Hide()
+	errMsg := Document.Call("getElementById", ErrorMsg)
+	errMsg.Set(`innerHTML`, `testtest`)
+	style := errMsg.Get(`style`)
+	style.Set(`display`, `none`)
 
 	jsonc, errpos, err := process(false)
 	if err != nil {
 
-		edit := jQuery(JsoncArea).Val()
+		var edit string
+		val := Document.Call("getElementById", JsoncArea).Get(`value`)
+		if val.Truthy() {
+			edit = val.String()
+		}
 
 		// get the line of the error
 		errline := strings.Count(edit[:errpos], "\n")
-
+		fmt.Printf("errline %v\n", errline)
 		idx := strings.Index(edit[errpos:], "\n")
+		style.Set(`display`, `block`)
 
-		// show error
-		jQuery(ErrorMsg).Show()
+		line := strconv.Itoa(idx + 1)
+		pos := strconv.Itoa(errpos)
 
 		if idx == -1 {
-			jQuery(ErrorMsg).SetText(`error parsing: ` + edit[errpos:])
+			errMsg.Set(`innerHTML`, `error line: 1 pos: `+pos)
 		} else {
-			jQuery(ErrorMsg).SetText(`error parsing: ` + edit[errpos:errpos+idx])
+			errMsg.Set(`innerHTML`, `error line: `+line+` pos: `+pos)
 		}
 
-		js.Global.Call("selectEditorLine", errline)
 		return
 	}
 
-	jQuery(JsoncArea).SetVal(jsonc)
+	Document.Call("getElementById", JsoncArea).Set(`value`, jsonc)
 
 	json, _, err := process(true)
 	if err != nil {
 		panic(err)
 	}
 
-	pj := PrettyJson([]byte(json))
+	pj := string(PrettyJson([]byte(json)))
 
-	json = strings.Replace(string(pj), "\n", `<br/>`, -1)
-	jQuery(JsonArea).SetHtml(json)
+	json = strings.Replace(pj, "\n", `<br/>`, -1)
 
-	js.Global.Call("initTextArea")
+	Document.Call("getElementById", JsonArea).Set(`innerHTML`, json)
 }
 
 func process(minimize bool) (json string, errpos int, err error) {
 
-	edit := jQuery(JsoncArea).Val()
+	var edit string
+	val := Document.Call("getElementById", JsoncArea).Get(`value`)
+	if val.Truthy() {
+		edit = val.String()
+	}
 
 	r := strings.NewReader(edit)
 
