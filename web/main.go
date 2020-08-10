@@ -74,7 +74,12 @@ func load() {
 		panic(err)
 	}
 
-	pj := string(PrettyJson([]byte(json)))
+	pj, err := PrettyJson([]byte(json))
+	if err != nil {
+		style.Set(`display`, `block`)
+		errMsg.Set(`innerHTML`, `error: `+err.Error())
+		return
+	}
 
 	json = strings.Replace(pj, "\n", `<br/>`, -1)
 
@@ -121,14 +126,13 @@ func process(minimize bool) (json string, errpos int, err error) {
 	return
 }
 
-func PrettyJson(jsn []byte) (prettyJson []byte) {
+func PrettyJson(jsn []byte) (string, error) {
 
 	var pretty bytes.Buffer
 	err := json.Indent(&pretty, jsn, "", "&nbsp;&nbsp;&nbsp;")
 	if err != nil {
-		return
+		return ``, err
 	}
 
-	prettyJson = pretty.Bytes()
-	return
+	return string(pretty.Bytes()), nil
 }
