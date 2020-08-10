@@ -1,6 +1,7 @@
 package reader
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"unicode"
@@ -10,21 +11,21 @@ type TokenType int
 
 type State interface {
 	Type() TokenType
-	Next(f *Filter) (err *errorf)
+	Next(f *Filter) error
 	Close()
 	Open() bool
 }
 
 const (
-	Root TokenType = iota
-	Object
-	Key
-	KeyNoQuote
-	Value
-	ValueNoQuote
-	Array
-	Comment
-	CommentMultiLine
+	Root             TokenType = iota // 0
+	Object                            // 1
+	Key                               // 2
+	KeyNoQuote                        // 3
+	Value                             // 4
+	ValueNoQuote                      // 5
+	Array                             // 6
+	Comment                           // 7
+	CommentMultiLine                  // 8
 )
 
 type Filter struct {
@@ -33,7 +34,7 @@ type Filter struct {
 	stack        []State
 	rootState    State
 	done         bool
-	err          *errorf
+	err          error
 	format       bool
 	newlineCount int
 	space        string
@@ -59,7 +60,7 @@ func (f *Filter) Done() bool {
 	return f.done
 }
 
-func (f *Filter) Error() *errorf {
+func (f *Filter) Err() error {
 	return f.err
 }
 
@@ -83,7 +84,7 @@ func (r *RootState) Type() TokenType {
 	return Root
 }
 
-func (r *RootState) Next(f *Filter) (err *errorf) {
+func (r *RootState) Next(f *Filter) error {
 
 	var nlcount int
 	for {
@@ -93,14 +94,13 @@ func (r *RootState) Next(f *Filter) (err *errorf) {
 		}
 
 		// check if comments need to be dispatched
-		dispatch, cerr := dispatchComment(f, nlcount, nil)
-		if cerr != nil {
-			err = cerr
-			return
+		dispatch, err := dispatchComment(f, nlcount, nil)
+		if err != nil {
+			return err
 		}
 
 		if dispatch {
-			return
+			return nil
 		}
 
 		if ru == '{' {
@@ -109,7 +109,7 @@ func (r *RootState) Next(f *Filter) (err *errorf) {
 			f.pushOut(ru)
 			err = f.ring.Advance()
 			f.pushState(&ObjectState{})
-			return
+			return err
 		}
 
 		if ru == '[' {
@@ -118,17 +118,16 @@ func (r *RootState) Next(f *Filter) (err *errorf) {
 			f.pushOut(ru)
 			err = f.ring.Advance()
 			f.pushState(&ArrayState{})
-			return
+			return err
 		}
 
 		if !unicode.IsSpace(ru) {
-			err = errorF("invalid first character: %v", -1, string(ru))
-			return
+			return Errorf("invalid first character: %v", -1, string(ru))
 		}
 
 		err = f.ring.Advance()
 		if err != nil {
-			return
+			return err
 		}
 	}
 }
@@ -141,7 +140,7 @@ func (o *KeyState) Type() TokenType {
 	return Key
 }
 
-func (r *KeyState) Next(f *Filter) (err *errorf) {
+func (r *KeyState) Next(f *Filter) error {
 
 	var escaped bool
 	for {
@@ -152,8 +151,7 @@ func (r *KeyState) Next(f *Filter) (err *errorf) {
 			r.Close()
 
 			f.pushOut(ru)
-			err = f.ring.Advance()
-			return
+			return f.ring.Advance()
 		}
 
 		escaped = false
@@ -163,9 +161,9 @@ func (r *KeyState) Next(f *Filter) (err *errorf) {
 
 		f.pushOut(ru)
 
-		err = f.ring.Advance()
+		err := f.ring.Advance()
 		if err != nil {
-			return
+			return err
 		}
 	}
 }
@@ -178,7 +176,7 @@ func (v *ValueState) Type() TokenType {
 	return Value
 }
 
-func (v *ValueState) Next(f *Filter) (err *errorf) {
+func (v *ValueState) Next(f *Filter) error {
 
 	var escaped bool
 	for {
@@ -188,8 +186,7 @@ func (v *ValueState) Next(f *Filter) (err *errorf) {
 			v.Close()
 
 			f.pushOut(ru)
-			err = f.ring.Advance()
-			return
+			return f.ring.Advance()
 		}
 
 		escaped = false
@@ -199,9 +196,9 @@ func (v *ValueState) Next(f *Filter) (err *errorf) {
 
 		f.pushOut(ru)
 
-		err = f.ring.Advance()
+		err := f.ring.Advance()
 		if err != nil {
-			return
+			return err
 		}
 	}
 }
@@ -216,7 +213,7 @@ func (o *KeyNoQuoteState) Type() TokenType {
 	return KeyNoQuote
 }
 
-func (r *KeyNoQuoteState) Next(f *Filter) (err *errorf) {
+func (r *KeyNoQuoteState) Next(f *Filter) error {
 
 	for {
 		ru := f.ring.Peek()
@@ -231,20 +228,19 @@ func (r *KeyNoQuoteState) Next(f *Filter) (err *errorf) {
 		if !r.escaped {
 
 			// check if comments need to be dispatched
-			dispatch, cerr := dispatchComment(f, 0, func() *errorf {
+			dispatch, err := dispatchComment(f, 0, func() error {
 				if !f.format {
 					f.pushOut('"')
 				}
 				r.Close()
 				return nil
 			})
-			if cerr != nil {
-				err = cerr
-				return
+			if err != nil {
+				return err
 			}
 
 			if dispatch {
-				return
+				return nil
 			}
 
 			if ru == ':' || unicode.IsSpace(ru) {
@@ -253,7 +249,7 @@ func (r *KeyNoQuoteState) Next(f *Filter) (err *errorf) {
 					f.pushOut('"')
 				}
 				r.Close()
-				return
+				return nil
 			}
 		}
 
@@ -264,9 +260,9 @@ func (r *KeyNoQuoteState) Next(f *Filter) (err *errorf) {
 
 		f.pushOut(ru)
 
-		err = f.ring.Advance()
+		err := f.ring.Advance()
 		if err != nil {
-			return
+			return err
 		}
 	}
 }
@@ -281,12 +277,12 @@ func (o *ValueNoQuoteState) Type() TokenType {
 	return ValueNoQuote
 }
 
-func (r *ValueNoQuoteState) Next(f *Filter) (err *errorf) {
+func (r *ValueNoQuoteState) Next(f *Filter) error {
 
-	renderValue := func() (err *errorf) {
+	renderValue := func() error {
 
 		if len(r.cval) == 0 {
-			return errorF("empty no quote state", f.ring.Position())
+			return Errorf("empty no quote state", f.ring.Position())
 		}
 
 		r.Close()
@@ -299,12 +295,12 @@ func (r *ValueNoQuoteState) Next(f *Filter) (err *errorf) {
 			v == `null` {
 
 			f.pushBytes(r.cval)
-			return
+			return nil
 		}
 
 		if f.format {
 			f.pushBytes(r.cval)
-			return
+			return nil
 		}
 
 		// quote the value
@@ -312,7 +308,7 @@ func (r *ValueNoQuoteState) Next(f *Filter) (err *errorf) {
 		f.pushBytes(r.cval)
 		f.pushOut('"')
 
-		return
+		return nil
 	}
 
 	for {
@@ -321,16 +317,15 @@ func (r *ValueNoQuoteState) Next(f *Filter) (err *errorf) {
 		if !r.escaped {
 
 			// check if comments need to be dispatched
-			dispatch, cerr := dispatchComment(f, 0, func() *errorf {
+			dispatch, err := dispatchComment(f, 0, func() error {
 				return renderValue()
 			})
-			if cerr != nil {
-				err = cerr
-				return
+			if err != nil {
+				return err
 			}
 
 			if dispatch {
-				return
+				return nil
 			}
 
 			if unicode.IsSpace(ru) || ru == ',' || ru == '}' || ru == ']' {
@@ -346,9 +341,9 @@ func (r *ValueNoQuoteState) Next(f *Filter) (err *errorf) {
 
 		r.cval = append(r.cval, byte(ru))
 
-		err = f.ring.Advance()
+		err := f.ring.Advance()
 		if err != nil {
-			return
+			return err
 		}
 	}
 }
@@ -363,7 +358,7 @@ func (o *ObjectState) Type() TokenType {
 	return Object
 }
 
-func (o *ObjectState) Next(f *Filter) (err *errorf) {
+func (o *ObjectState) Next(f *Filter) error {
 
 	s := f.peekState()
 
@@ -385,15 +380,14 @@ func (o *ObjectState) Next(f *Filter) (err *errorf) {
 		}
 
 		// check if comments need to be dispatched
-		dispatch, cerr := dispatchComment(f, nlcount, nil)
-		if cerr != nil {
-			err = cerr
-			return
+		dispatch, err := dispatchComment(f, nlcount, nil)
+		if err != nil {
+			return err
 		}
 
 		if dispatch {
 			dontResetState = true
-			return
+			return nil
 		}
 
 		if unicode.IsSpace(ru) {
@@ -411,40 +405,38 @@ func (o *ObjectState) Next(f *Filter) (err *errorf) {
 				o.hasKeyDelimiter = false
 
 				if ru == ',' {
-					err = errorF("invalid comma", f.ring.Position())
-					return
+					return Errorf("invalid comma", f.ring.Position())
 				}
 
 				if ru == '[' {
 					f.pushOut(ru)
 					err = f.ring.Advance()
 					f.pushState(&ArrayState{})
-					return
+					return err
 				}
 
 				if ru == '{' {
 					f.pushOut(ru)
 					err = f.ring.Advance()
 					f.pushState(&ObjectState{})
-					return
+					return err
 				}
 
 				if ru == '"' {
 					f.pushOut(ru)
 					err = f.ring.Advance()
 					f.pushState(&ValueState{})
-					return
+					return err
 				}
 
 				f.pushState(&ValueNoQuoteState{})
-				return
+				return nil
 			}
 
 			if ru == ':' {
 
 				if o.hasKeyDelimiter {
-					err = errorF("invalid character", f.ring.Position())
-					return
+					return Errorf("invalid character", f.ring.Position())
 				}
 
 				o.hasKeyDelimiter = true
@@ -456,15 +448,13 @@ func (o *ObjectState) Next(f *Filter) (err *errorf) {
 				break
 			}
 
-			err = errorF("error parsing object rune: %v", f.ring.Position(), string(ru))
-			return
+			return Errorf("error parsing object rune: %v", f.ring.Position(), string(ru))
 
 		case Value, ValueNoQuote, Object, Array:
 
 			if ru == ',' {
 				if o.hasComma {
-					err = errorF("invalid comma", f.ring.Position())
-					return
+					return Errorf("invalid comma", f.ring.Position())
 				}
 				o.hasComma = true
 
@@ -485,8 +475,7 @@ func (o *ObjectState) Next(f *Filter) (err *errorf) {
 				f.newLine(nlcount)
 
 				f.pushOut(ru)
-				err = f.ring.Advance()
-				return
+				return f.ring.Advance()
 			}
 
 			if !f.format && ((s.Type() == Object && !s.Open()) || s.Type() != Object) {
@@ -494,33 +483,24 @@ func (o *ObjectState) Next(f *Filter) (err *errorf) {
 
 			}
 
-			/*
-				if s.Type() != Object {
-					f.pushOut(',')
-					if f.format {
-						f.pushOut(' ')
-					}
-				}
-			*/
-
 			if ru == '"' {
 
 				f.newLine(nlcount)
 				f.pushOut(ru)
 				err = f.ring.Advance()
 				f.pushState(&KeyState{})
-				return
+				return err
 			}
 
 			f.newLine(nlcount)
 			f.pushState(&KeyNoQuoteState{})
-			return
+			return nil
 		}
 
 	next:
 		err = f.ring.Advance()
 		if err != nil {
-			return
+			return err
 		}
 	}
 }
@@ -535,7 +515,7 @@ func (o *ArrayState) Type() TokenType {
 	return Array
 }
 
-func (r *ArrayState) Next(f *Filter) (err *errorf) {
+func (r *ArrayState) Next(f *Filter) error {
 
 	s := f.peekState()
 
@@ -557,15 +537,14 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 		}
 
 		// check if comments need to be dispatched
-		dispatch, cerr := dispatchComment(f, nlcount, nil)
-		if cerr != nil {
-			err = cerr
-			return
+		dispatch, err := dispatchComment(f, nlcount, nil)
+		if err != nil {
+			return err
 		}
 
 		if dispatch {
 			dontResetComma = true
-			return
+			return nil
 		}
 
 		if unicode.IsSpace(ru) {
@@ -574,8 +553,7 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 
 		if ru == ',' {
 			if r.hasComma {
-				err = errorF("invalid comma", f.ring.Position())
-				return
+				return Errorf("invalid comma", f.ring.Position())
 			}
 			r.hasComma = true
 
@@ -594,8 +572,7 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 				f.newLine(1)
 			}
 			f.pushOut(ru)
-			err = f.ring.Advance()
-			return
+			return f.ring.Advance()
 		}
 
 		if s.Type() != Array || !s.Open() {
@@ -614,14 +591,14 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 			f.pushOut(ru)
 			err = f.ring.Advance()
 			f.pushState(&ArrayState{})
-			return
+			return err
 		}
 
 		if ru == '{' {
 			f.pushOut(ru)
 			err = f.ring.Advance()
 			f.pushState(&ObjectState{})
-			return
+			return err
 		}
 
 		if ru == '"' {
@@ -629,26 +606,25 @@ func (r *ArrayState) Next(f *Filter) (err *errorf) {
 			f.pushOut(ru)
 			err = f.ring.Advance()
 			f.pushState(&ValueState{})
-			return
+			return err
 		}
 
 		if !unicode.IsSpace(ru) {
 			f.pushState(&ValueNoQuoteState{})
-			return
+			return nil
 		}
 
-		err = errorF("invalid character (1) %v", f.ring.Position(), string(ru))
-		return
+		return Errorf("invalid character (1) %v", f.ring.Position(), string(ru))
 
 	next:
 		err = f.ring.Advance()
 		if err != nil {
-			return
+			return err
 		}
 	}
 }
 
-func dispatchComment(f *Filter, nlcount int, postHook func() *errorf) (shouldDispatch bool, err *errorf) {
+func dispatchComment(f *Filter, nlcount int, postHook func() error) (shouldDispatch bool, err error) {
 
 	ru := f.ring.Peek()
 
@@ -719,30 +695,27 @@ func (c *CommentState) Type() TokenType {
 	return Comment
 }
 
-func (c *CommentState) Next(f *Filter) (err *errorf) {
+func (c *CommentState) Next(f *Filter) error {
 
 	for {
 		ru := f.ring.Peek()
 
 		if ru == '\n' {
 			f.popState()
-			//err = f.ring.Advance()
-			return
+			return nil
 		}
 
 		if f.format {
 			f.pushOut(ru)
 		}
 
-		err = f.ring.Advance()
-
+		err := f.ring.Advance()
 		if err != nil {
-			if err.error == io.EOF {
+			if errors.Is(err, io.EOF) {
 				f.embed = true
 				f.popState()
 			}
-
-			return
+			return nil
 		}
 	}
 }
@@ -755,7 +728,7 @@ func (c *CommentMultiLineState) Type() TokenType {
 	return CommentMultiLine
 }
 
-func (c *CommentMultiLineState) Next(f *Filter) (err *errorf) {
+func (c *CommentMultiLineState) Next(f *Filter) error {
 
 	var escaped bool
 	var hasNewline bool
@@ -778,9 +751,9 @@ func (c *CommentMultiLineState) Next(f *Filter) (err *errorf) {
 
 		if !escaped && ru == '*' {
 
-			err = f.ring.Advance()
+			err := f.ring.Advance()
 			if err != nil {
-				return
+				return err
 			}
 
 			ru = f.ring.Peek()
@@ -793,8 +766,7 @@ func (c *CommentMultiLineState) Next(f *Filter) (err *errorf) {
 				f.embed = true
 
 				f.popState()
-				err = f.ring.Advance()
-				return
+				return f.ring.Advance()
 			}
 
 			f.ring.Pop()
@@ -804,9 +776,9 @@ func (c *CommentMultiLineState) Next(f *Filter) (err *errorf) {
 			escaped = true
 		}
 
-		err = f.ring.Advance()
+		err := f.ring.Advance()
 		if err != nil {
-			return
+			return err
 		}
 	}
 }
@@ -814,11 +786,8 @@ func (c *CommentMultiLineState) Next(f *Filter) (err *errorf) {
 func (f *Filter) Read(p []byte) (n int, err error) {
 
 	if f.err != nil {
-		err = f.err
-		return
+		return 0, f.err
 	}
-
-	var cerr *errorf
 
 	n = f.outMinSize
 	if n > len(p) {
@@ -827,12 +796,12 @@ func (f *Filter) Read(p []byte) (n int, err error) {
 
 	for n > len(f.outbuf) {
 
-		cerr = f.fill()
-		if cerr != nil {
-			err = cerr
+		err = f.fill()
+		if err != nil {
 			break
 		}
 	}
+	f.err = err
 
 	if len(f.outbuf) < n {
 		n = len(f.outbuf)
@@ -844,38 +813,26 @@ func (f *Filter) Read(p []byte) (n int, err error) {
 
 	f.outbuf = f.outbuf[n:]
 
-	s, e := f.peekFirstOpenState()
-	if e == nil && s.Type() == Root {
+	s := f.peekFirstOpenState()
+	if s.Type() == Root {
 		f.done = true
 	}
 
-	f.err = cerr
-
-	return
+	return n, err
 }
 
-func (f *Filter) fill() *errorf {
+func (f *Filter) fill() error {
 
-	state, err := f.peekFirstOpenState()
-	if err != nil {
-		return err
-	}
+	state := f.peekFirstOpenState()
 
 	for f.outMinSize > len(f.outbuf) {
 
-		//f.printStack()
-		//fmt.Printf("__state %v\n", state.Type())
-
 		err := state.Next(f)
-
 		if err != nil {
 			return err
 		}
 
-		state, err = f.peekFirstOpenState()
-		if err != nil {
-			return err
-		}
+		state = f.peekFirstOpenState()
 	}
 
 	return nil
@@ -889,22 +846,20 @@ func (f *Filter) peekState() State {
 	return state
 }
 
-func (f *Filter) peekFirstOpenState() (s State, err *errorf) {
+func (f *Filter) peekFirstOpenState() State {
 
 	if len(f.stack) == 0 {
-		s = f.rootState
-		return
+		return f.rootState
 	}
 
 	for i := len(f.stack) - 1; i >= 0; i-- {
-		s = f.stack[i]
+		s := f.stack[i]
 		if s.Open() {
-			return
+			return s
 		}
 	}
 
-	s = f.rootState
-	return
+	return f.rootState
 }
 
 func (f *Filter) pushState(s State) {
@@ -939,9 +894,6 @@ func (f *Filter) newLine(newLineCount int) {
 		}
 
 		for i := 0; i < idx; i++ {
-			//f.pushOut(' ')
-			//f.pushOut(' ')
-
 			f.pushSpace()
 			f.pushSpace()
 		}

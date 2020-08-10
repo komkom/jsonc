@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"strings"
 
@@ -94,10 +95,14 @@ func process(minimize bool) (json string, errpos int, err error) {
 	io.Copy(buf, jcr)
 
 	f := jcr.(*reader.Filter)
-	jcrErr := f.Error()
-	if jcrErr != nil && jcrErr.Err() != io.EOF {
-		err = jcrErr.Err()
-		errpos = jcrErr.Position()
+	if f.Err() != nil && !errors.Is(f.Err(), io.EOF) {
+		err = f.Err()
+
+		var rerr reader.Error
+		if ok := errors.As(err, &rerr); ok {
+			errpos = rerr.Position()
+		}
+
 		print("error 2 " + err.Error())
 		return
 	}

@@ -2,24 +2,17 @@ package reader
 
 import "io"
 
-func New(r io.Reader, minimize bool, space string) (reader io.Reader, err error) {
+func New(r io.Reader, minimize bool, space string) (io.Reader, error) {
 
 	buf := NewBuffer(r, 256, 64)
 
-	ring, errf := NewRing(256, 64, func() (r rune, size int, err *errorf) {
-
-		r, size, cerr := buf.ReadRune()
-		if cerr != nil {
-			err = cerror(cerr)
-		}
-		return
+	ring, err := NewRing(256, 64, func() (r rune, size int, err error) {
+		return buf.ReadRune()
 	})
 
-	if errf != nil {
-		err = errf
-		return
+	if err != nil {
+		return nil, err
 	}
 
-	reader = NewFilter(ring, 256, &RootState{}, !minimize, space)
-	return
+	return NewFilter(ring, 256, &RootState{}, !minimize, space), nil
 }
