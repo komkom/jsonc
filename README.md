@@ -1,3 +1,5 @@
+[![Go Report Card](https://goreportcard.com/badge/github.com/komkom/jsonc)](https://goreportcard.com/report/github.com/komkom/jsonc)
+
 # jsonc
 [give it a try](https://komkom.github.io/)
 
