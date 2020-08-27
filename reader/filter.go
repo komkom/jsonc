@@ -23,9 +23,10 @@ const (
 	KeyNoQuote                        // 3
 	Value                             // 4
 	ValueNoQuote                      // 5
-	Array                             // 6
-	Comment                           // 7
-	CommentMultiLine                  // 8
+	ValueMultiline                    // 6
+	Array                             // 7
+	Comment                           // 8
+	CommentMultiLine                  // 9
 )
 
 type Filter struct {
@@ -121,6 +122,34 @@ func (r *RootState) Next(f *Filter) error {
 			return err
 		}
 
+		/*
+			if ru == '"' {
+
+				f.newLine(nlcount)
+				f.pushOut(ru)
+				err = f.ring.Advance()
+				f.pushState(&ValueState{})
+				return err
+			}
+
+			if ru == '`' {
+
+				f.newLine(nlcount)
+				if f.format {
+					f.pushOut(ru)
+				} else {
+					f.pushOut('"')
+				}
+				err = f.ring.Advance()
+				f.pushState(&ValueMultilineState{})
+				return err
+			}
+
+			if !unicode.IsSpace(ru) {
+				f.pushState(&ValueNoQuoteState{})
+			}
+		*/
+
 		if !unicode.IsSpace(ru) {
 			return Errorf("invalid first character: %v", -1, string(ru))
 		}
@@ -182,6 +211,10 @@ func (v *ValueState) Next(f *Filter) error {
 	for {
 		ru := f.ring.Peek()
 
+		if !escaped && ru == '\n' {
+			return fmt.Errorf(`line break in string value`)
+		}
+
 		if !escaped && ru == '"' {
 			v.Close()
 
@@ -194,13 +227,7 @@ func (v *ValueState) Next(f *Filter) error {
 			escaped = true
 		}
 
-		if !f.format && ru == '\n' {
-			f.pushOut('\\')
-			f.pushOut('n')
-
-		} else {
-			f.pushOut(ru)
-		}
+		f.pushOut(ru)
 
 		err := f.ring.Advance()
 		if err != nil {
@@ -354,6 +381,113 @@ func (r *ValueNoQuoteState) Next(f *Filter) error {
 	}
 }
 
+const (
+	quotationMark  = '"'
+	solidus        = '\u002F'
+	formFeed       = '\u000C'
+	lineFeed       = '\n'
+	carriageReturn = '\r'
+	tab            = '\u0009'
+)
+
+var (
+	multilineEscapes = []struct {
+		code    rune
+		replace rune
+	}{
+		{code: quotationMark, replace: '"'},
+		{code: solidus, replace: solidus},
+		{code: formFeed, replace: 'f'},
+		{code: lineFeed, replace: 'n'},
+		{code: carriageReturn, replace: 'r'},
+		{code: tab, replace: 't'},
+	}
+)
+
+func needsReplacement(r rune) (replace rune, ok bool) {
+
+	for _, o := range multilineEscapes {
+		if o.code == r {
+			return o.replace, true
+		}
+	}
+	return replace, false
+}
+
+type ValueMultilineState struct {
+	baseState
+}
+
+func (v *ValueMultilineState) Type() TokenType {
+	return Value
+}
+
+func (v *ValueMultilineState) Next(f *Filter) error {
+
+	if f.format {
+		for {
+			ru := f.ring.Peek()
+
+			if ru == '`' {
+				v.Close()
+				f.pushOut(ru)
+				return f.ring.Advance()
+			}
+
+			if ru == '\\' {
+				return fmt.Errorf("character \\ found in multiline string")
+
+			}
+
+			f.pushOut(ru)
+			err := f.ring.Advance()
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	for {
+		ru := f.ring.Peek()
+
+		if ru == '`' {
+			v.Close()
+			f.pushOut('"')
+			return f.ring.Advance()
+		}
+
+		if ru == '\\' {
+			return fmt.Errorf("character \\ found in multiline string")
+		}
+
+		if rep, ok := needsReplacement(ru); ok {
+			f.pushOut('\\')
+			f.pushOut(rep)
+			err := f.ring.Advance()
+			if err != nil {
+				return err
+			}
+
+			continue
+		}
+
+		if unicode.IsSpace(ru) {
+			f.pushOut(' ')
+			err := f.ring.Advance()
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		f.pushOut(ru)
+		err := f.ring.Advance()
+		if err != nil {
+			return err
+		}
+	}
+}
+
 type ObjectState struct {
 	baseState
 	hasComma        bool
@@ -435,6 +569,17 @@ func (o *ObjectState) Next(f *Filter) error {
 					return err
 				}
 
+				if ru == '`' {
+					if f.format {
+						f.pushOut(ru)
+					} else {
+						f.pushOut('"')
+					}
+					err = f.ring.Advance()
+					f.pushState(&ValueMultilineState{})
+					return err
+				}
+
 				f.pushState(&ValueNoQuoteState{})
 				return nil
 			}
@@ -465,9 +610,7 @@ func (o *ObjectState) Next(f *Filter) error {
 				o.hasComma = true
 
 				if f.format {
-
 					f.pushOut(',')
-					//f.pushOut(' ')
 				}
 
 				break
@@ -608,11 +751,22 @@ func (r *ArrayState) Next(f *Filter) error {
 		}
 
 		if ru == '"' {
-
 			f.pushOut(ru)
 			err = f.ring.Advance()
 			f.pushState(&ValueState{})
 			return err
+		}
+
+		if ru == '`' {
+			if f.format {
+				f.pushOut(ru)
+			} else {
+				f.pushOut('"')
+			}
+			err = f.ring.Advance()
+			f.pushState(&ValueMultilineState{})
+			return err
+
 		}
 
 		if !unicode.IsSpace(ru) {
@@ -820,6 +974,7 @@ func (f *Filter) Read(p []byte) (n int, err error) {
 	f.outbuf = f.outbuf[n:]
 
 	s := f.peekFirstOpenState()
+
 	if s.Type() == Root {
 		f.done = true
 	}

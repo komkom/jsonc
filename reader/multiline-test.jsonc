@@ -1,0 +1,9 @@
+{
+	quote: `"`
+	solidus: `/`
+	fromFeed: `` 	
+	lineFeed: `
+`
+	carriageReturn: ``
+	tab: `	`
+}

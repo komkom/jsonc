@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type TestJson struct {
@@ -20,12 +23,12 @@ func JsonData() []TestJson {
 
 	return []TestJson{
 		{
-			JsonCString: `{ give:  "[it a shot]
-
-    /* and lots of comments :) */
-
-    now?:  what" }`,
-			ExpectedJsonString: `{"give":"[it a shot]\n\n    /* and lots of comments :) */\n\n    now?:  what"}`,
+			JsonCString:        "{some: `text`}",
+			ExpectedJsonString: `{"some":"text"}`,
+		},
+		{
+			JsonCString:        "[some `text`]",
+			ExpectedJsonString: `["some","text"]`,
 		},
 		{
 			JsonCString:        `{x:x}`,
@@ -100,7 +103,7 @@ func TestJsonParser2(t *testing.T) {
 
 	for idx, d := range data {
 
-		t.Log(`testing json`)
+		t.Log(idx, ` testing json`)
 
 		b := strings.NewReader(d.JsonCString)
 		ring.Clear(func() (r rune, size int, err error) {
@@ -137,4 +140,36 @@ func TestJsonParser2(t *testing.T) {
 			assert.Equal(t, d.ExpectedJsonString, string(buf.Bytes()))
 		}
 	}
+}
+
+func TestMultilineValue(t *testing.T) {
+
+	file, err := os.Open(`multiline-test.jsonc`)
+	require.NoError(t, err)
+	data, err := ioutil.ReadAll(file)
+
+	ring, err := NewRing(256, 64, nil)
+	require.NoError(t, err)
+
+	f := NewFilter(ring, 256, &RootState{}, false, " ")
+
+	b := strings.NewReader(string(data))
+	ring.Clear(func() (r rune, size int, err error) {
+		return b.ReadRune()
+	})
+
+	f.Clear()
+
+	buf := &bytes.Buffer{}
+
+	_, err = buf.ReadFrom(f)
+	require.NoError(t, err)
+
+	ret := buf.String()
+	assert.Contains(t, ret, `"quote":"\""`)
+	assert.Contains(t, ret, `"solidus":"\/"`)
+	assert.Contains(t, ret, `"fromFeed":"\f"`)
+	assert.Contains(t, ret, `"lineFeed":"\n"`)
+	assert.Contains(t, ret, `"carriageReturn":"\r"`)
+	assert.Contains(t, ret, `"tab":"\t"`)
 }
