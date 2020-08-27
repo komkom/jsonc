@@ -33,7 +33,7 @@ type Filter struct {
 	ring         *Ring
 	outMinSize   int
 	stack        []State
-	rootState    State
+	rootState    *RootState
 	done         bool
 	err          error
 	format       bool
@@ -45,12 +45,13 @@ type Filter struct {
 	embed             bool
 }
 
-func NewFilter(ring *Ring, outMinSize int, rootState State, format bool, space string) *Filter {
+func NewFilter(ring *Ring, outMinSize int, format bool, space string) *Filter {
 
-	return &Filter{ring: ring, outMinSize: outMinSize, rootState: rootState, format: format, space: space}
+	return &Filter{ring: ring, outMinSize: outMinSize, rootState: &RootState{}, format: format, space: space}
 }
 
 func (f *Filter) Clear() {
+	f.rootState.init = false
 	f.outbuf = nil
 	f.stack = nil
 	f.done = false
@@ -78,6 +79,7 @@ func (b *baseState) Open() bool {
 }
 
 type RootState struct {
+	init bool
 	baseState
 }
 
@@ -90,6 +92,7 @@ func (r *RootState) Next(f *Filter) error {
 	var nlcount int
 	for {
 		ru := f.ring.Peek()
+
 		if ru == '\n' {
 			nlcount++
 		}
@@ -104,36 +107,34 @@ func (r *RootState) Next(f *Filter) error {
 			return nil
 		}
 
-		if ru == '{' {
+		if !r.init {
+			switch ru {
+			case '{':
+				r.init = true
+				f.newLine(nlcount)
+				f.pushOut(ru)
+				err = f.ring.Advance()
+				f.pushState(&ObjectState{})
+				return err
 
-			f.newLine(nlcount)
-			f.pushOut(ru)
-			err = f.ring.Advance()
-			f.pushState(&ObjectState{})
-			return err
-		}
+			case '[':
+				r.init = true
+				f.newLine(nlcount)
+				f.pushOut(ru)
+				err = f.ring.Advance()
+				f.pushState(&ArrayState{})
+				return err
 
-		if ru == '[' {
-
-			f.newLine(nlcount)
-			f.pushOut(ru)
-			err = f.ring.Advance()
-			f.pushState(&ArrayState{})
-			return err
-		}
-
-		/*
-			if ru == '"' {
-
+			case '"':
+				r.init = true
 				f.newLine(nlcount)
 				f.pushOut(ru)
 				err = f.ring.Advance()
 				f.pushState(&ValueState{})
 				return err
-			}
 
-			if ru == '`' {
-
+			case '`':
+				r.init = true
 				f.newLine(nlcount)
 				if f.format {
 					f.pushOut(ru)
@@ -144,11 +145,7 @@ func (r *RootState) Next(f *Filter) error {
 				f.pushState(&ValueMultilineState{})
 				return err
 			}
-
-			if !unicode.IsSpace(ru) {
-				f.pushState(&ValueNoQuoteState{})
-			}
-		*/
+		}
 
 		if !unicode.IsSpace(ru) {
 			return Errorf("invalid first character: %v", -1, string(ru))
@@ -974,8 +971,8 @@ func (f *Filter) Read(p []byte) (n int, err error) {
 	f.outbuf = f.outbuf[n:]
 
 	s := f.peekFirstOpenState()
-
-	if s.Type() == Root {
+	if s.Type() == Root && (s.(*RootState)).init {
+		s.Close()
 		f.done = true
 	}
 
@@ -985,7 +982,6 @@ func (f *Filter) Read(p []byte) (n int, err error) {
 func (f *Filter) fill() error {
 
 	state := f.peekFirstOpenState()
-
 	for f.outMinSize > len(f.outbuf) {
 
 		err := state.Next(f)
@@ -995,12 +991,11 @@ func (f *Filter) fill() error {
 
 		state = f.peekFirstOpenState()
 	}
-
 	return nil
 }
 
 func (f *Filter) peekState() State {
-	state := f.rootState
+	var state State = f.rootState
 	if len(f.stack) > 0 {
 		state = f.stack[len(f.stack)-1]
 	}
@@ -1008,10 +1003,6 @@ func (f *Filter) peekState() State {
 }
 
 func (f *Filter) peekFirstOpenState() State {
-
-	if len(f.stack) == 0 {
-		return f.rootState
-	}
 
 	for i := len(f.stack) - 1; i >= 0; i-- {
 		s := f.stack[i]

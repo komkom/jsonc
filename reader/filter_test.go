@@ -23,6 +23,14 @@ func JsonData() []TestJson {
 
 	return []TestJson{
 		{
+			JsonCString:        "`value`",
+			ExpectedJsonString: `"value"`,
+		},
+		{
+			JsonCString:        `"value"`,
+			ExpectedJsonString: `"value"`,
+		},
+		{
 			JsonCString:        "{some: `text`}",
 			ExpectedJsonString: `{"some":"text"}`,
 		},
@@ -99,7 +107,7 @@ func TestJsonParser2(t *testing.T) {
 		panic(err)
 	}
 
-	f := NewFilter(ring, 256, &RootState{}, false, " ")
+	f := NewFilter(ring, 256, false, " ")
 
 	for idx, d := range data {
 
@@ -151,7 +159,7 @@ func TestMultilineValue(t *testing.T) {
 	ring, err := NewRing(256, 64, nil)
 	require.NoError(t, err)
 
-	f := NewFilter(ring, 256, &RootState{}, false, " ")
+	f := NewFilter(ring, 256, false, " ")
 
 	b := strings.NewReader(string(data))
 	ring.Clear(func() (r rune, size int, err error) {

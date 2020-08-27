@@ -14,5 +14,5 @@ func New(r io.Reader, minimize bool, space string) (io.Reader, error) {
 		return nil, err
 	}
 
-	return NewFilter(ring, 256, &RootState{}, !minimize, space), nil
+	return NewFilter(ring, 256, !minimize, space), nil
 }
