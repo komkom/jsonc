@@ -248,6 +248,12 @@ func (r *KeyNoQuoteState) Next(f *Filter) error {
 	for {
 		ru := f.ring.Peek()
 
+		if !r.notFirst {
+			if !unicode.IsLetter(ru) && !unicode.IsDigit(ru) {
+				return Errorf("invalid key", f.ring.Position())
+			}
+		}
+
 		if !f.format {
 			if !r.notFirst {
 				f.pushOut('"')
@@ -326,6 +332,10 @@ func (r *ValueNoQuoteState) Next(f *Filter) error {
 
 			f.pushBytes(r.cval)
 			return nil
+		}
+
+		if !unicode.IsLetter(([]rune(v))[0]) {
+			return Errorf("invalid identifier", f.ring.Position())
 		}
 
 		if f.format {
@@ -485,10 +495,19 @@ func (v *ValueMultilineState) Next(f *Filter) error {
 	}
 }
 
+type ObjInternalState = int
+
+var (
+	ObjIntNext ObjInternalState = 0
+
+	ObjInternalKey       ObjInternalState = 1
+	ObjInternalDelimiter ObjInternalState = 2
+	ObjInternalValue     ObjInternalState = 3
+)
+
 type ObjectState struct {
 	baseState
-	hasComma        bool
-	hasKeyDelimiter bool
+	internalState ObjInternalState
 }
 
 func (o *ObjectState) Type() TokenType {
@@ -497,19 +516,7 @@ func (o *ObjectState) Type() TokenType {
 
 func (o *ObjectState) Next(f *Filter) error {
 
-	s := f.peekState()
-
-	var dontResetState bool
-
-	defer func() {
-		if !dontResetState {
-			o.hasComma = false
-			o.hasKeyDelimiter = false
-		}
-	}()
-
 	var nlcount int
-
 	for {
 		ru := f.ring.Peek()
 		if ru == '\n' {
@@ -523,7 +530,6 @@ func (o *ObjectState) Next(f *Filter) error {
 		}
 
 		if dispatch {
-			dontResetState = true
 			return nil
 		}
 
@@ -531,104 +537,10 @@ func (o *ObjectState) Next(f *Filter) error {
 			goto next
 		}
 
-		switch s.Type() {
-		case Key, KeyNoQuote:
+		switch o.internalState {
+		case ObjIntNext:
 
-			f.newLine(nlcount)
-			nlcount = 0
-
-			if o.hasKeyDelimiter {
-
-				o.hasKeyDelimiter = false
-
-				if ru == ',' {
-					return Errorf("invalid comma", f.ring.Position())
-				}
-
-				if ru == '[' {
-					f.pushOut(ru)
-					err = f.ring.Advance()
-					f.pushState(&ArrayState{})
-					return err
-				}
-
-				if ru == '{' {
-					f.pushOut(ru)
-					err = f.ring.Advance()
-					f.pushState(&ObjectState{})
-					return err
-				}
-
-				if ru == '"' {
-					f.pushOut(ru)
-					err = f.ring.Advance()
-					f.pushState(&ValueState{})
-					return err
-				}
-
-				if ru == '`' {
-					if f.format {
-						f.pushOut(ru)
-					} else {
-						f.pushOut('"')
-					}
-					err = f.ring.Advance()
-					f.pushState(&ValueMultilineState{})
-					return err
-				}
-
-				f.pushState(&ValueNoQuoteState{})
-				return nil
-			}
-
-			if ru == ':' {
-
-				if o.hasKeyDelimiter {
-					return Errorf("invalid character", f.ring.Position())
-				}
-
-				o.hasKeyDelimiter = true
-				f.pushOut(ru)
-				if f.format {
-					//f.pushOut(' ')
-					f.pushSpace()
-				}
-				break
-			}
-
-			return Errorf("error parsing object rune: %v", f.ring.Position(), string(ru))
-
-		case Value, ValueNoQuote, Object, Array:
-
-			if ru == ',' {
-				if o.hasComma {
-					return Errorf("invalid comma", f.ring.Position())
-				}
-				o.hasComma = true
-
-				if f.format {
-					f.pushOut(',')
-				}
-
-				break
-			}
-
-			f.embed = true
-
-			if ru == '}' {
-
-				o.Close()
-				f.newLine(nlcount)
-
-				f.pushOut(ru)
-				return f.ring.Advance()
-			}
-
-			if !f.format && ((s.Type() == Object && !s.Open()) || s.Type() != Object) {
-				f.pushOut(',')
-
-			}
-
+			o.internalState = ObjInternalKey
 			if ru == '"' {
 
 				f.newLine(nlcount)
@@ -640,6 +552,75 @@ func (o *ObjectState) Next(f *Filter) error {
 
 			f.newLine(nlcount)
 			f.pushState(&KeyNoQuoteState{})
+			return nil
+
+		case ObjInternalKey:
+
+			if ru == ':' {
+				f.pushOut(ru)
+				if f.format {
+					f.pushSpace()
+				}
+				o.internalState = ObjInternalDelimiter
+				return f.ring.Advance()
+			}
+
+			return Errorf("error parsing object rune: %v", f.ring.Position(), string(ru))
+
+		case ObjInternalDelimiter:
+
+			o.internalState = ObjInternalValue
+			switch ru {
+			case '[':
+				f.pushOut(ru)
+				err = f.ring.Advance()
+				f.pushState(&ArrayState{})
+				return err
+
+			case '{':
+				f.pushOut(ru)
+				err = f.ring.Advance()
+				f.pushState(&ObjectState{})
+				return err
+
+			case '"':
+				f.pushOut(ru)
+				err = f.ring.Advance()
+				f.pushState(&ValueState{})
+				return err
+
+			case '`':
+				if f.format {
+					f.pushOut(ru)
+				} else {
+					f.pushOut('"')
+				}
+				err = f.ring.Advance()
+				f.pushState(&ValueMultilineState{})
+				return err
+			default:
+				f.pushState(&ValueNoQuoteState{})
+				return nil
+			}
+
+		case ObjInternalValue:
+
+			if ru == '}' {
+				o.Close()
+				f.pushOut(ru)
+				return f.ring.Advance()
+			}
+
+			if ru == ',' {
+				f.pushOut(ru)
+				o.internalState = ObjIntNext
+				return f.ring.Advance()
+			}
+
+			if !f.format {
+				f.pushOut(',')
+			}
+			o.internalState = ObjIntNext
 			return nil
 		}
 
@@ -983,7 +964,6 @@ func (f *Filter) fill() error {
 
 	state := f.peekFirstOpenState()
 	for f.outMinSize > len(f.outbuf) {
-
 		err := state.Next(f)
 		if err != nil {
 			return err
@@ -1010,12 +990,10 @@ func (f *Filter) peekFirstOpenState() State {
 			return s
 		}
 	}
-
 	return f.rootState
 }
 
 func (f *Filter) pushState(s State) {
-
 	f.stack = append(f.stack, s)
 }
 

@@ -55,7 +55,7 @@ func JsonData() []TestJson {
 		z:[ "test" /* we are in  and in a comment http://www.some.url.com   */  
 		// and a single line comment
 		], 
-		o:123.65e+7,      
+		o:123.65e+7      
 	}/* can you also add comments here */`,
 			ExpectedJsonString: `{"t":"ttestt","x":"x","z":["test"],"o":123.65e+7}`,
 		},
@@ -88,7 +88,7 @@ func JsonData() []TestJson {
 		{
 			JsonCString: `{ 1:1, /* */ 2: /* some other comment */ 2,
 			/* another comment */ 7: [1,2,3,4,5,6],
-			3:3,4:4,5:5 /*hmm*/ ,} // test comment at the end`,
+			3:3,4:4,5:5 /*hmm*/ } // test comment at the end`,
 			ExpectedJsonString: `{"1":1,"2":2,"7":[1,2,3,4,5,6],"3":3,"4":4,"5":5}`,
 		},
 		{
