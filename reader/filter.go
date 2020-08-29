@@ -783,7 +783,7 @@ func (c *CommentState) Next(f *Filter) error {
 				f.embed = true
 				f.popState()
 			}
-			return nil
+			return err
 		}
 	}
 }
@@ -879,10 +879,8 @@ func (f *Filter) Read(p []byte) (n int, err error) {
 
 	f.outbuf = f.outbuf[n:]
 
-	s := f.peekState()
-	if s.Type() == Root && (s.(*RootState)).init {
+	if errors.Is(err, io.EOF) {
 		f.done = true
-		f.popState()
 	}
 
 	return n, err

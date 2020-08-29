@@ -1,6 +1,8 @@
 package reader
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type ReadRune func() (r rune, size int, err error)
 

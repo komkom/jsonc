@@ -150,6 +150,65 @@ func TestJsonParser2(t *testing.T) {
 	}
 }
 
+func JsonDataFmt() []TestJson {
+
+	return []TestJson{
+		{
+			JsonCString: ` /* json description */
+	{ 
+		/* test */
+		t:ttestt /* some other comment */ ,
+		x:x, // should test this 
+		z:[ "test" /* we are in  and in a comment http://www.some.url.com   */  
+		// and a single line comment
+		], 
+		o:123.65e+7      
+	}/* can you also add comments here */`,
+			ExpectedJsonString: `{"t":"ttestt","x":"x","z":["test"],"o":123.65e+7}`,
+		},
+
+		{
+			JsonCString: `{ 1:1, /* */ 2: /* some other comment */ 2,
+			/* another comment */ 7: [1,2,3,4,5,6],
+			3:3,4:4,5:5 /*hmm*/ } // test comment at the end`,
+			ExpectedJsonString: `{"1":1,"2":2,"7":[1,2,3,4,5,6],"3":3,"4":4,"5":5}`,
+		},
+	}
+}
+
+func TestJsoncFmt(t *testing.T) {
+
+	data := JsonDataFmt()
+
+	//data := JsonData()
+
+	ring, err := NewRing(32, 16, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	f := NewFilter(ring, 16, true, " ")
+
+	for idx, d := range data {
+
+		t.Log(idx, ` testing json`)
+
+		b := strings.NewReader(d.JsonCString)
+		ring.Clear(func() (r rune, size int, err error) {
+			return b.ReadRune()
+		})
+
+		f.Clear()
+
+		buf := &bytes.Buffer{}
+
+		_, err := buf.ReadFrom(f)
+		require.NoError(t, err)
+
+		t.Logf("idx: %v jsonc:\n\n##\n%s\n##\n", idx, buf.Bytes())
+	}
+}
+
 func TestMultilineValue(t *testing.T) {
 
 	file, err := os.Open(`multiline-test.jsonc`)
