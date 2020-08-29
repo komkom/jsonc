@@ -38,9 +38,7 @@ type Filter struct {
 	newlineCount int
 	space        string
 
-	outbuf            []byte
-	lastWasWhitespace bool
-	embed             bool
+	outbuf []byte
 }
 
 func NewFilter(ring *Ring, outMinSize int, format bool, space string) *Filter {
@@ -73,16 +71,17 @@ func (r *RootState) Type() TokenType {
 
 func (r *RootState) Next(f *Filter) error {
 
-	var nlcount int
 	for {
 		ru := f.ring.Peek()
 
-		if ru == '\n' {
-			nlcount++
+		if f.format {
+			if ru == '\n' {
+				f.pushOut(ru)
+			}
 		}
 
 		// check if comments need to be dispatched
-		dispatch, err := dispatchComment(f, nlcount, nil)
+		dispatch, err := dispatchComment(f, nil)
 		if err != nil {
 			return err
 		}
@@ -95,7 +94,6 @@ func (r *RootState) Next(f *Filter) error {
 			switch ru {
 			case '{':
 				r.init = true
-				f.newLine(nlcount)
 				f.pushOut(ru)
 				err = f.ring.Advance()
 				f.pushState(&ObjectState{})
@@ -103,7 +101,6 @@ func (r *RootState) Next(f *Filter) error {
 
 			case '[':
 				r.init = true
-				f.newLine(nlcount)
 				f.pushOut(ru)
 				err = f.ring.Advance()
 				f.pushState(&ArrayState{})
@@ -111,7 +108,6 @@ func (r *RootState) Next(f *Filter) error {
 
 			case '"':
 				r.init = true
-				f.newLine(nlcount)
 				f.pushOut(ru)
 				err = f.ring.Advance()
 				f.pushState(&ValueState{})
@@ -119,7 +115,6 @@ func (r *RootState) Next(f *Filter) error {
 
 			case '`':
 				r.init = true
-				f.newLine(nlcount)
 				if f.format {
 					f.pushOut(ru)
 				} else {
@@ -442,6 +437,7 @@ var (
 
 type ObjectState struct {
 	internalState ObjInternalState
+	hasLineBreak  bool
 }
 
 func (o *ObjectState) Type() TokenType {
@@ -450,15 +446,18 @@ func (o *ObjectState) Type() TokenType {
 
 func (o *ObjectState) Next(f *Filter) error {
 
-	var nlcount int
 	for {
 		ru := f.ring.Peek()
-		if ru == '\n' {
-			nlcount++
+
+		if f.format {
+			if ru == '\n' {
+				o.hasLineBreak = true
+				f.pushOut(ru)
+			}
 		}
 
 		// check if comments need to be dispatched
-		dispatch, err := dispatchComment(f, nlcount, nil)
+		dispatch, err := dispatchComment(f, nil)
 		if err != nil {
 			return err
 		}
@@ -474,17 +473,25 @@ func (o *ObjectState) Next(f *Filter) error {
 		switch o.internalState {
 		case ObjIntNext:
 
+			if ru == '}' {
+				f.pushOut(ru)
+				f.popState()
+				return f.ring.Advance()
+			}
+
+			if o.hasLineBreak {
+				f.pushSpaces(f.indent())
+			}
+			o.hasLineBreak = false
+
 			o.internalState = ObjInternalKey
 			if ru == '"' {
-
-				f.newLine(nlcount)
 				f.pushOut(ru)
 				err = f.ring.Advance()
 				f.pushState(&KeyState{})
 				return err
 			}
 
-			f.newLine(nlcount)
 			f.pushState(&KeyNoQuoteState{})
 			return nil
 
@@ -492,9 +499,6 @@ func (o *ObjectState) Next(f *Filter) error {
 
 			if ru == ':' {
 				f.pushOut(ru)
-				if f.format {
-					f.pushSpace()
-				}
 				o.internalState = ObjInternalDelimiter
 				return f.ring.Advance()
 			}
@@ -553,6 +557,8 @@ func (o *ObjectState) Next(f *Filter) error {
 
 			if !f.format {
 				f.pushOut(',')
+			} else {
+				f.pushOut(' ')
 			}
 			o.internalState = ObjIntNext
 			return nil
@@ -569,34 +575,35 @@ func (o *ObjectState) Next(f *Filter) error {
 type ArrayState struct {
 	init         bool
 	hasComma     bool
-	didLinebreak bool
+	hasLineBreak bool
 }
 
-func (o *ArrayState) Type() TokenType {
+func (ArrayState) Type() TokenType {
 	return Array
 }
 
-func (r *ArrayState) Next(f *Filter) error {
+func (a *ArrayState) Next(f *Filter) error {
 
 	var dontResetComma bool
 
 	defer func() {
 		if !dontResetComma {
-			r.hasComma = false
+			a.hasComma = false
 		}
 	}()
 
-	var nlcount int
 	for {
 		ru := f.ring.Peek()
 
-		if ru == '\n' {
-			r.didLinebreak = true
-			nlcount++
+		if f.format {
+			if ru == '\n' {
+				a.hasLineBreak = true
+				f.pushOut(ru)
+			}
 		}
 
 		// check if comments need to be dispatched
-		dispatch, err := dispatchComment(f, nlcount, nil)
+		dispatch, err := dispatchComment(f, nil)
 		if err != nil {
 			return err
 		}
@@ -611,40 +618,35 @@ func (r *ArrayState) Next(f *Filter) error {
 		}
 
 		if ru == ',' {
-			if r.hasComma {
+			if a.hasComma {
 				return Errorf("invalid comma", f.ring.Position())
 			}
-			r.hasComma = true
+			a.hasComma = true
 
 			if f.format {
 				f.pushOut(',')
-				f.embed = true
 			}
 
 			goto next
 		}
 
+		if a.hasLineBreak {
+			f.pushSpaces(f.indent())
+		}
+		a.hasLineBreak = false
+
 		if ru == ']' {
-			if r.didLinebreak {
-				f.newLine(1)
-			}
 			f.pushOut(ru)
 			f.popState()
 			return f.ring.Advance()
 		}
 
-		if r.init {
+		if a.init {
 			if !f.format {
 				f.pushOut(',')
-			} else if !r.hasComma {
-				f.embed = true
 			}
 		}
-		r.init = true
-
-		if nlcount > 0 {
-			f.newLine(nlcount)
-		}
+		a.init = true
 
 		if ru == '[' {
 			f.pushOut(ru)
@@ -694,7 +696,7 @@ func (r *ArrayState) Next(f *Filter) error {
 	}
 }
 
-func dispatchComment(f *Filter, nlcount int, postHook func() error) (shouldDispatch bool, err error) {
+func dispatchComment(f *Filter, postHook func() error) (shouldDispatch bool, err error) {
 
 	ru := f.ring.Peek()
 
@@ -702,10 +704,6 @@ func dispatchComment(f *Filter, nlcount int, postHook func() error) (shouldDispa
 		err = f.ring.Advance()
 		if err != nil {
 			return
-		}
-
-		if nlcount > 0 {
-			f.newLine(nlcount)
 		}
 
 		ru = f.ring.Peek()
@@ -721,10 +719,6 @@ func dispatchComment(f *Filter, nlcount int, postHook func() error) (shouldDispa
 			shouldDispatch = true
 			err = f.ring.Advance()
 			if f.format {
-				if !f.lastWasWhitespace {
-					//f.pushOut(' ')
-					f.pushSpace()
-				}
 				f.pushBytes([]byte("//"))
 			}
 			f.pushState(&CommentState{})
@@ -738,11 +732,6 @@ func dispatchComment(f *Filter, nlcount int, postHook func() error) (shouldDispa
 
 			shouldDispatch = true
 			if f.format {
-				if !f.lastWasWhitespace {
-					//f.pushOut(' ')
-					f.pushSpace()
-				}
-
 				f.pushBytes([]byte("/*"))
 			}
 			err = f.ring.Advance()
@@ -780,7 +769,6 @@ func (c *CommentState) Next(f *Filter) error {
 		err := f.ring.Advance()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				f.embed = true
 				f.popState()
 			}
 			return err
@@ -797,24 +785,8 @@ func (c *CommentMultiLineState) Type() TokenType {
 func (c *CommentMultiLineState) Next(f *Filter) error {
 
 	var escaped bool
-	var hasNewline bool
 	for {
 		ru := f.ring.Peek()
-		if f.format {
-
-			if !hasNewline || ru == '\n' || !unicode.IsSpace(ru) {
-
-				hasNewline = false
-
-				if ru == '\n' {
-					f.newLine(1)
-					hasNewline = true
-				} else {
-					f.pushOut(ru)
-				}
-			}
-		}
-
 		if !escaped && ru == '*' {
 
 			err := f.ring.Advance()
@@ -828,8 +800,6 @@ func (c *CommentMultiLineState) Next(f *Filter) error {
 				if f.format {
 					f.pushOut('/')
 				}
-
-				f.embed = true
 
 				f.popState()
 				return f.ring.Advance()
@@ -879,7 +849,7 @@ func (f *Filter) Read(p []byte) (n int, err error) {
 
 	f.outbuf = f.outbuf[n:]
 
-	if errors.Is(err, io.EOF) {
+	if errors.Is(err, io.EOF) && f.peekState().Type() == Root {
 		f.done = true
 	}
 
@@ -918,68 +888,27 @@ func (f *Filter) popState() {
 	f.stack = f.stack[:len(f.stack)-1]
 }
 
-func (f *Filter) newLine(newLineCount int) {
+func (f *Filter) indent() int {
 
-	if f.format && newLineCount > 0 {
-
-		if newLineCount > 2 {
-			newLineCount = 2
-		}
-
-		for i := 0; i < newLineCount; i++ {
-			f.pushOut('\n')
-		}
-
-		idx := 0
-		for _, s := range f.stack {
-			if s.Type() == Array || s.Type() == Object {
-				idx++
-			}
-		}
-
-		for i := 0; i < idx; i++ {
-			f.pushSpace()
-			f.pushSpace()
+	var indent int
+	for _, s := range f.stack {
+		if s.Type() == Object || s.Type() == Array {
+			indent++
 		}
 	}
+	return indent
 }
 
-func (f *Filter) pushSpace() {
-
-	f.embed = false
-	f.outbuf = append(f.outbuf, []byte(f.space)...)
-	f.lastWasWhitespace = true
+func (f *Filter) pushSpaces(c int) {
+	for i := 0; i < c; i++ {
+		f.pushOut(' ')
+	}
 }
 
 func (f *Filter) pushOut(r rune) {
-
-	f.embedIfNeeded(r)
-
 	f.outbuf = append(f.outbuf, byte(r))
-	f.lastWasWhitespace = unicode.IsSpace(r)
 }
 
 func (f *Filter) pushBytes(b []byte) {
-
-	// always embed
-	f.embedIfNeeded('x')
-
 	f.outbuf = append(f.outbuf, b...)
-	f.lastWasWhitespace = false
-}
-
-func (f *Filter) embedIfNeeded(r rune) {
-	if f.format {
-		if f.embed && !unicode.IsSpace(r) {
-			f.outbuf = append(f.outbuf, []byte(f.space)...)
-		}
-		f.embed = false
-	}
-}
-
-func (f *Filter) printStack() {
-	for _, s := range f.stack {
-		fmt.Printf("(type: %v) ", s.Type())
-	}
-	fmt.Println(``)
 }
