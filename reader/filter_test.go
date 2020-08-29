@@ -23,6 +23,15 @@ func JsonData() []TestJson {
 
 	return []TestJson{
 		{
+			JsonCString:        "{}",
+			ExpectedJsonString: `{}`,
+		},
+		{
+			JsonCString:        "[]",
+			ExpectedJsonString: `[]`,
+		},
+
+		{
 			JsonCString:        "`value`",
 			ExpectedJsonString: `"value"`,
 		},
@@ -35,7 +44,7 @@ func JsonData() []TestJson {
 			ExpectedJsonString: `{"some":"text"}`,
 		},
 		{
-			JsonCString:        "[some `text`]",
+			JsonCString:        "[some `text`,]",
 			ExpectedJsonString: `["some","text"]`,
 		},
 		{
@@ -173,12 +182,56 @@ func JsonDataFmt() []TestJson {
 			3:3,4:4,5:5 /*hmm*/ } // test comment at the end`,
 			ExpectedJsonString: `{"1":1,"2":2,"7":[1,2,3,4,5,6],"3":3,"4":4,"5":5}`,
 		},
+		{
+			JsonCString: `{   }`,
+		},
+		{
+			JsonCString: `{
+			a:b, c:{
+			d: e,
+			e: f
+			}`,
+		},
+	}
+}
+
+func JsonDataFmt2() []TestJson {
+
+	return []TestJson{
+		{
+			JsonCString: `{a:a ,    b:b}`,
+		},
+		{
+			JsonCString: `{ a:b, c:{ d: {
+
+			t: t,
+			r: {/*test
+ asda
+ asdf
+*/
+			t:1
+			t:4
+			}
+			},
+			e/*ii*/: f       //comment
+			c: [ 
+			1, 3, 4, 5,     6,
+			7, 8,
+			9 ,20]
+			}}`,
+		},
+		{
+			JsonCString: `{}`,
+		},
+		{
+			JsonCString: `[]`,
+		},
 	}
 }
 
 func TestJsoncFmt(t *testing.T) {
 
-	data := JsonDataFmt()
+	data := JsonDataFmt2()
 
 	//data := JsonData()
 
@@ -190,8 +243,6 @@ func TestJsoncFmt(t *testing.T) {
 	f := NewFilter(ring, 16, true, " ")
 
 	for idx, d := range data {
-
-		t.Log(idx, ` testing json`)
 
 		b := strings.NewReader(d.JsonCString)
 		ring.Clear(func() (r rune, size int, err error) {

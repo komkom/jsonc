@@ -584,14 +584,6 @@ func (ArrayState) Type() TokenType {
 
 func (a *ArrayState) Next(f *Filter) error {
 
-	var dontResetComma bool
-
-	defer func() {
-		if !dontResetComma {
-			a.hasComma = false
-		}
-	}()
-
 	for {
 		ru := f.ring.Peek()
 
@@ -609,7 +601,6 @@ func (a *ArrayState) Next(f *Filter) error {
 		}
 
 		if dispatch {
-			dontResetComma = true
 			return nil
 		}
 
@@ -622,10 +613,6 @@ func (a *ArrayState) Next(f *Filter) error {
 				return Errorf("invalid comma", f.ring.Position())
 			}
 			a.hasComma = true
-
-			if f.format {
-				f.pushOut(',')
-			}
 
 			goto next
 		}
@@ -642,11 +629,14 @@ func (a *ArrayState) Next(f *Filter) error {
 		}
 
 		if a.init {
-			if !f.format {
+			if !f.format || a.hasComma {
 				f.pushOut(',')
+			} else {
+				f.pushOut(' ')
 			}
 		}
 		a.init = true
+		a.hasComma = false
 
 		if ru == '[' {
 			f.pushOut(ru)
@@ -719,7 +709,7 @@ func dispatchComment(f *Filter, postHook func() error) (shouldDispatch bool, err
 			shouldDispatch = true
 			err = f.ring.Advance()
 			if f.format {
-				f.pushBytes([]byte("//"))
+				f.pushBytes([]byte(" //"))
 			}
 			f.pushState(&CommentState{})
 			return
@@ -732,7 +722,7 @@ func dispatchComment(f *Filter, postHook func() error) (shouldDispatch bool, err
 
 			shouldDispatch = true
 			if f.format {
-				f.pushBytes([]byte("/*"))
+				f.pushBytes([]byte(" /*"))
 			}
 			err = f.ring.Advance()
 			f.pushState(&CommentMultiLineState{})
@@ -798,6 +788,7 @@ func (c *CommentMultiLineState) Next(f *Filter) error {
 			if ru == '/' {
 
 				if f.format {
+					f.pushOut('*')
 					f.pushOut('/')
 				}
 
@@ -810,6 +801,10 @@ func (c *CommentMultiLineState) Next(f *Filter) error {
 
 		if ru == '\\' {
 			escaped = true
+		}
+
+		if f.format {
+			f.pushOut(ru)
 		}
 
 		err := f.ring.Advance()
