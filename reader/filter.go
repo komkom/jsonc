@@ -12,8 +12,6 @@ type TokenType int
 type State interface {
 	Type() TokenType
 	Next(f *Filter) error
-	Close()
-	Open() bool
 }
 
 const (
@@ -46,13 +44,11 @@ type Filter struct {
 }
 
 func NewFilter(ring *Ring, outMinSize int, format bool, space string) *Filter {
-
 	return &Filter{ring: ring, outMinSize: outMinSize, rootState: &RootState{}, format: format, space: space}
 }
 
 func (f *Filter) Clear() {
 	f.rootState.init = false
-	f.rootState.closed = false
 	f.outbuf = nil
 	f.stack = nil
 	f.done = false
@@ -67,21 +63,8 @@ func (f *Filter) Err() error {
 	return f.err
 }
 
-type baseState struct {
-	closed bool
-}
-
-func (b *baseState) Close() {
-	b.closed = true
-}
-
-func (b *baseState) Open() bool {
-	return !b.closed
-}
-
 type RootState struct {
 	init bool
-	baseState
 }
 
 func (r *RootState) Type() TokenType {
@@ -159,9 +142,7 @@ func (r *RootState) Next(f *Filter) error {
 	}
 }
 
-type KeyState struct {
-	baseState
-}
+type KeyState struct{}
 
 func (o *KeyState) Type() TokenType {
 	return Key
@@ -175,9 +156,8 @@ func (r *KeyState) Next(f *Filter) error {
 
 		if !escaped && ru == '"' {
 
-			r.Close()
-
 			f.pushOut(ru)
+			f.popState()
 			return f.ring.Advance()
 		}
 
@@ -195,9 +175,7 @@ func (r *KeyState) Next(f *Filter) error {
 	}
 }
 
-type ValueState struct {
-	baseState
-}
+type ValueState struct{}
 
 func (v *ValueState) Type() TokenType {
 	return Value
@@ -214,9 +192,8 @@ func (v *ValueState) Next(f *Filter) error {
 		}
 
 		if !escaped && ru == '"' {
-			v.Close()
-
 			f.pushOut(ru)
+			f.popState()
 			return f.ring.Advance()
 		}
 
@@ -235,7 +212,6 @@ func (v *ValueState) Next(f *Filter) error {
 }
 
 type KeyNoQuoteState struct {
-	baseState
 	notFirst bool
 }
 
@@ -266,7 +242,7 @@ func (r *KeyNoQuoteState) Next(f *Filter) error {
 			if !f.format {
 				f.pushOut('"')
 			}
-			r.Close()
+			f.popState()
 			return nil
 		}
 
@@ -284,7 +260,6 @@ func (r *KeyNoQuoteState) Next(f *Filter) error {
 }
 
 type ValueNoQuoteState struct {
-	baseState
 	cval []byte
 }
 
@@ -296,11 +271,10 @@ func (r *ValueNoQuoteState) Next(f *Filter) error {
 
 	renderValue := func() error {
 
+		f.popState()
 		if len(r.cval) == 0 {
 			return Errorf("empty no quote state", f.ring.Position())
 		}
-
-		r.Close()
 
 		// check if quotes are not needed
 		v := string(r.cval)
@@ -384,9 +358,7 @@ func needsReplacement(r rune) (replace rune, ok bool) {
 	return replace, false
 }
 
-type ValueMultilineState struct {
-	baseState
-}
+type ValueMultilineState struct{}
 
 func (v *ValueMultilineState) Type() TokenType {
 	return Value
@@ -399,8 +371,8 @@ func (v *ValueMultilineState) Next(f *Filter) error {
 			ru := f.ring.Peek()
 
 			if ru == '`' {
-				v.Close()
 				f.pushOut(ru)
+				f.popState()
 				return f.ring.Advance()
 			}
 
@@ -421,8 +393,8 @@ func (v *ValueMultilineState) Next(f *Filter) error {
 		ru := f.ring.Peek()
 
 		if ru == '`' {
-			v.Close()
 			f.pushOut('"')
+			f.popState()
 			return f.ring.Advance()
 		}
 
@@ -469,7 +441,6 @@ var (
 )
 
 type ObjectState struct {
-	baseState
 	internalState ObjInternalState
 }
 
@@ -569,8 +540,8 @@ func (o *ObjectState) Next(f *Filter) error {
 		case ObjInternalValue:
 
 			if ru == '}' {
-				o.Close()
 				f.pushOut(ru)
+				f.popState()
 				return f.ring.Advance()
 			}
 
@@ -596,8 +567,6 @@ func (o *ObjectState) Next(f *Filter) error {
 }
 
 type ArrayState struct {
-	baseState
-
 	init         bool
 	hasComma     bool
 	didLinebreak bool
@@ -656,11 +625,11 @@ func (r *ArrayState) Next(f *Filter) error {
 		}
 
 		if ru == ']' {
-			r.Close()
 			if r.didLinebreak {
 				f.newLine(1)
 			}
 			f.pushOut(ru)
+			f.popState()
 			return f.ring.Advance()
 		}
 
@@ -788,9 +757,7 @@ func dispatchComment(f *Filter, nlcount int, postHook func() error) (shouldDispa
 	return
 }
 
-type CommentState struct {
-	baseState
-}
+type CommentState struct{}
 
 func (c *CommentState) Type() TokenType {
 	return Comment
@@ -802,7 +769,7 @@ func (c *CommentState) Next(f *Filter) error {
 		ru := f.ring.Peek()
 
 		if ru == '\n' {
-			c.Close()
+			f.popState()
 			return nil
 		}
 
@@ -814,16 +781,14 @@ func (c *CommentState) Next(f *Filter) error {
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				f.embed = true
-				c.Close()
+				f.popState()
 			}
 			return nil
 		}
 	}
 }
 
-type CommentMultiLineState struct {
-	baseState
-}
+type CommentMultiLineState struct{}
 
 func (c *CommentMultiLineState) Type() TokenType {
 	return CommentMultiLine
@@ -866,7 +831,7 @@ func (c *CommentMultiLineState) Next(f *Filter) error {
 
 				f.embed = true
 
-				c.Close()
+				f.popState()
 				return f.ring.Advance()
 			}
 
@@ -916,8 +881,8 @@ func (f *Filter) Read(p []byte) (n int, err error) {
 
 	s := f.peekState()
 	if s.Type() == Root && (s.(*RootState)).init {
-		s.Close()
 		f.done = true
+		f.popState()
 	}
 
 	return n, err
@@ -928,13 +893,9 @@ func (f *Filter) fill() error {
 	state := f.peekState()
 	for f.outMinSize > len(f.outbuf) {
 		err := state.Next(f)
-		if !state.Open() {
-			f.popState()
-		}
 		if err != nil {
 			return err
 		}
-
 		state = f.peekState()
 	}
 
@@ -973,7 +934,7 @@ func (f *Filter) newLine(newLineCount int) {
 
 		idx := 0
 		for _, s := range f.stack {
-			if s.Open() && (s.Type() == Array || s.Type() == Object) {
+			if s.Type() == Array || s.Type() == Object {
 				idx++
 			}
 		}
@@ -1020,7 +981,7 @@ func (f *Filter) embedIfNeeded(r rune) {
 
 func (f *Filter) printStack() {
 	for _, s := range f.stack {
-		fmt.Printf("(type: %v open %v) ", s.Type(), s.Open())
+		fmt.Printf("(type: %v) ", s.Type())
 	}
 	fmt.Println(``)
 }
