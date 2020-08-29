@@ -52,6 +52,7 @@ func NewFilter(ring *Ring, outMinSize int, format bool, space string) *Filter {
 
 func (f *Filter) Clear() {
 	f.rootState.init = false
+	f.rootState.closed = false
 	f.outbuf = nil
 	f.stack = nil
 	f.done = false
@@ -235,7 +236,6 @@ func (v *ValueState) Next(f *Filter) error {
 
 type KeyNoQuoteState struct {
 	baseState
-	escaped  bool
 	notFirst bool
 }
 
@@ -257,41 +257,21 @@ func (r *KeyNoQuoteState) Next(f *Filter) error {
 		if !f.format {
 			if !r.notFirst {
 				f.pushOut('"')
-				r.notFirst = true
 			}
 		}
+		r.notFirst = true
 
-		if !r.escaped {
+		if ru == ':' || ru == '/' || unicode.IsSpace(ru) {
 
-			// check if comments need to be dispatched
-			dispatch, err := dispatchComment(f, 0, func() error {
-				if !f.format {
-					f.pushOut('"')
-				}
-				r.Close()
-				return nil
-			})
-			if err != nil {
-				return err
+			if !f.format {
+				f.pushOut('"')
 			}
-
-			if dispatch {
-				return nil
-			}
-
-			if ru == ':' || unicode.IsSpace(ru) {
-
-				if !f.format {
-					f.pushOut('"')
-				}
-				r.Close()
-				return nil
-			}
+			r.Close()
+			return nil
 		}
 
-		r.escaped = false
 		if ru == '\\' {
-			r.escaped = true
+			return Errorf("invalid key", f.ring.Position())
 		}
 
 		f.pushOut(ru)
@@ -305,8 +285,7 @@ func (r *KeyNoQuoteState) Next(f *Filter) error {
 
 type ValueNoQuoteState struct {
 	baseState
-	escaped bool
-	cval    []byte
+	cval []byte
 }
 
 func (o *ValueNoQuoteState) Type() TokenType {
@@ -354,29 +333,13 @@ func (r *ValueNoQuoteState) Next(f *Filter) error {
 	for {
 		ru := f.ring.Peek()
 
-		if !r.escaped {
+		if unicode.IsSpace(ru) || ru == ',' || ru == '}' || ru == ']' || ru == '/' {
 
-			// check if comments need to be dispatched
-			dispatch, err := dispatchComment(f, 0, func() error {
-				return renderValue()
-			})
-			if err != nil {
-				return err
-			}
-
-			if dispatch {
-				return nil
-			}
-
-			if unicode.IsSpace(ru) || ru == ',' || ru == '}' || ru == ']' {
-
-				return renderValue()
-			}
+			return renderValue()
 		}
 
-		r.escaped = false
 		if ru == '\\' {
-			r.escaped = true
+			return Errorf("invalid identifier", f.ring.Position())
 		}
 
 		r.cval = append(r.cval, byte(ru))
@@ -634,6 +597,8 @@ func (o *ObjectState) Next(f *Filter) error {
 
 type ArrayState struct {
 	baseState
+
+	init         bool
 	hasComma     bool
 	didLinebreak bool
 }
@@ -643,8 +608,6 @@ func (o *ArrayState) Type() TokenType {
 }
 
 func (r *ArrayState) Next(f *Filter) error {
-
-	s := f.peekState()
 
 	var dontResetComma bool
 
@@ -693,7 +656,6 @@ func (r *ArrayState) Next(f *Filter) error {
 		}
 
 		if ru == ']' {
-
 			r.Close()
 			if r.didLinebreak {
 				f.newLine(1)
@@ -702,13 +664,14 @@ func (r *ArrayState) Next(f *Filter) error {
 			return f.ring.Advance()
 		}
 
-		if s.Type() != Array || !s.Open() {
+		if r.init {
 			if !f.format {
 				f.pushOut(',')
 			} else if !r.hasComma {
 				f.embed = true
 			}
 		}
+		r.init = true
 
 		if nlcount > 0 {
 			f.newLine(nlcount)
@@ -839,7 +802,7 @@ func (c *CommentState) Next(f *Filter) error {
 		ru := f.ring.Peek()
 
 		if ru == '\n' {
-			f.popState()
+			c.Close()
 			return nil
 		}
 
@@ -851,7 +814,7 @@ func (c *CommentState) Next(f *Filter) error {
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				f.embed = true
-				f.popState()
+				c.Close()
 			}
 			return nil
 		}
@@ -903,7 +866,7 @@ func (c *CommentMultiLineState) Next(f *Filter) error {
 
 				f.embed = true
 
-				f.popState()
+				c.Close()
 				return f.ring.Advance()
 			}
 
@@ -951,7 +914,7 @@ func (f *Filter) Read(p []byte) (n int, err error) {
 
 	f.outbuf = f.outbuf[n:]
 
-	s := f.peekFirstOpenState()
+	s := f.peekState()
 	if s.Type() == Root && (s.(*RootState)).init {
 		s.Close()
 		f.done = true
@@ -962,33 +925,25 @@ func (f *Filter) Read(p []byte) (n int, err error) {
 
 func (f *Filter) fill() error {
 
-	state := f.peekFirstOpenState()
+	state := f.peekState()
 	for f.outMinSize > len(f.outbuf) {
 		err := state.Next(f)
+		if !state.Open() {
+			f.popState()
+		}
 		if err != nil {
 			return err
 		}
 
-		state = f.peekFirstOpenState()
+		state = f.peekState()
 	}
+
 	return nil
 }
 
 func (f *Filter) peekState() State {
-	var state State = f.rootState
 	if len(f.stack) > 0 {
-		state = f.stack[len(f.stack)-1]
-	}
-	return state
-}
-
-func (f *Filter) peekFirstOpenState() State {
-
-	for i := len(f.stack) - 1; i >= 0; i-- {
-		s := f.stack[i]
-		if s.Open() {
-			return s
-		}
+		return f.stack[len(f.stack)-1]
 	}
 	return f.rootState
 }
