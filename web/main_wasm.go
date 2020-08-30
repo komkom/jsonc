@@ -10,7 +10,7 @@ import (
 	"strings"
 	"syscall/js"
 
-	"github.com/komkom/jsonc/reader"
+	"github.com/komkom/jsonc/jsonc"
 )
 
 var Document = js.Global().Get("document")
@@ -96,7 +96,7 @@ func process(minimize bool) (json string, errpos int, err error) {
 
 	r := strings.NewReader(edit)
 
-	jcr, err := reader.New(r, minimize, "  ")
+	jcr, err := jsonc.New(r, minimize, "  ")
 	if err != nil {
 		print("error 1")
 		return
@@ -106,11 +106,11 @@ func process(minimize bool) (json string, errpos int, err error) {
 
 	io.Copy(buf, jcr)
 
-	f := jcr.(*reader.Filter)
+	f := jcr.(*jsonc.Filter)
 	if f.Err() != nil && !errors.Is(f.Err(), io.EOF) {
 		err = f.Err()
 
-		var rerr reader.Error
+		var rerr jsonc.Error
 		if ok := errors.As(err, &rerr); ok {
 			errpos = rerr.Position()
 		}
