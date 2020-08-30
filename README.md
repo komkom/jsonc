@@ -77,6 +77,44 @@ number = "a number as defined by json dot org";
 ### Examples
 
 ```
+// A jsonc example document
+{
+ title:`jsonc example`
+
+ owner:{
+  name:`komkom`
+  dob:`1975-01-25T12:00:00-02:00`
+ }
+
+ database:{ // our live db
+  server:`192.168.1.1`
+  ports:[8001,8002,8003]
+  connectionMax:5000
+  enabled:true
+ }
+
+ servers:{ // a server
+  alpha:{
+   ip: /* is soon invalid */ `10.0.0.1`
+   dc:`eqdc10`
+  }
+  
+  beta:{
+   ip:`10.0.0.2`
+   dc:`eqdc10`
+  }
+ }
+ 
+ clients:{
+  data:[["gamma","delta"],[1,2]]
+ }
+ 
+ hosts:[alpha,omega]
+}
+
+```
+
+```
 {
  // A jsonc example
  glossEntry:{
