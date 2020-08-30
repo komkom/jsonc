@@ -2,7 +2,7 @@
 
 # jsonc
 
-Jsonc is a simplified json format which allows comments and unquoted values delimited by whitespace. A jsonc formatted file can be transformed to a json file. Comments will be stripped out and quotes added.
+Jsonc is a simplified json format which allows comments and unquoted values delimited by whitespace. A jsonc formatted file can be unambiguously transformed to a json file. Comments will be stripped out and quotes added.
 
 Any valid json is also a valid jsonc - but this goes only in one direction.
 
