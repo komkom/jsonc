@@ -47,4 +47,31 @@ To format a json.
 jsonc -m < somefile.json
 ```
 
+## Syntax
+Here is a first attempt to formalize the jsonc syntax in [ebnf](https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form).
+
+```
+document = type;
+
+type = object | array | basicType;
+basicType = nullSymbol | booleanSymbol | string | number;
+
+object = "{" [{property [","] } property] "}";
+property = string ":" type;
+
+array = "[" [{type [","]} type] "]";
+
+nullSymbol = "null";
+booleanSymbol = "true" | "false";
+
+string = stringToken | stringMultiline | jsonString;
+
+stringToken = "a string containing only digits or letters.";
+stringMultiline = "`" {stringSymbol lineBreak {lineBreak}} stringSymbol {lineBreak} "`";
+jsonString = "a string as defined by json dot org including surrounding \" ";
+lineBreak = "the line break character \n";
+
+number = "a number as defined by json dot org";
+```
+
 The formatting behaviour tries to mimic gofmt. Any suggestions, help, fixes welcome.
