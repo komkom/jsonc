@@ -16,6 +16,22 @@ go get github.com/komkom/jsonc/...
 
 ## Use
 
+### In Code
+``` golang
+dec, _ := jsonc.NewDecoder(strings.NewReader(`{
+  a : "jsonc file" // with comments
+}`))
+
+x := struct {
+  Key string `json:"a"`
+}{}
+
+_ = dec.Decode(&x)
+fmt.Printf("%v\n", x)
+```
+
+### As CLI
+
 Prints the formatted jsonc file.
 ```bash
 jsonc < somefile.jsonc 
