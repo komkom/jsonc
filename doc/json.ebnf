@@ -32,9 +32,9 @@ booleanSymbol = "true" | "false";
 
 string = stringToken | stringMultiline | jsonString; 
 
-stringToken = "a string without white space and escape \\ characters. It does not include sourrounding \"";
+stringToken = "a string containing only digits or letters.";
 stringMultiline = "`" {stringSymbol lineBreak {lineBreak}} stringSymbol {lineBreak} "`";
 jsonString = "a string as defined by json dot org including surrounding \" "; 
-lineBreak = "a line break \n";
+lineBreak = "the line break character \n";
 
 number = "a number as defined by json dot org";
