@@ -79,11 +79,9 @@ number = "a number as defined by json dot org";
 ```
 // A jsonc example document
 {
- title:`jsonc example`
-
  owner:{
   name:`komkom`
-  dob:`1975-01-25T12:00:00-02:00`
+  dob: /* just some random dob */ `1975-01-25T12:00:00-02:00`
  }
 
  database:{ // our live db
