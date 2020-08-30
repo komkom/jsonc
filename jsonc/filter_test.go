@@ -3,6 +3,7 @@ package jsonc
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -19,13 +20,21 @@ type TestJson struct {
 	ExpectedStringInError string
 }
 
-func JsonData() []TestJson {
+func JsonData2() []TestJson {
 
 	return []TestJson{
 		{
-			JsonCString:        "{}",
-			ExpectedJsonString: `{}`,
+			JsonCString: ` 
+				[ "t",  "t", [i]
+				]`,
+			ExpectedJsonString: `[["t","t",{"j":"i","o":"o","i":[1,2,3,4,5]}]]`,
 		},
+	}
+}
+
+func JsonData() []TestJson {
+
+	return []TestJson{
 		{
 			JsonCString:        "[]",
 			ExpectedJsonString: `[]`,
@@ -73,16 +82,16 @@ func JsonData() []TestJson {
 		},
 		{
 			JsonCString:           `[ x, y, z,, ]`,
-			ExpectedStringInError: `pos: 10 invalid comma`,
+			ExpectedStringInError: `empty no quote state`,
 		},
 		{
-			JsonCString:        `[ x, y, z, x:x, [ "t", "t", {j:i,o:o,i:[1,2,3,4,5]}] ]`,
-			ExpectedJsonString: `["x","y","z","x:x",["t","t",{"j":"i","o":"o","i":[1,2,3,4,5]}]]`,
+			JsonCString:        `[ x, y, z, xx, [ "t", "t", {j:i,o:o,i:[1,2,3,4,5]}] ]`,
+			ExpectedJsonString: `["x","y","z","xx",["t","t",{"j":"i","o":"o","i":[1,2,3,4,5]}]]`,
 		},
 		{
 			JsonCString: ` [ 
 			x, y, z, 
-			x:x, 
+			xx, 
 				[ "t", /* some test */  "t",   
 					{
 						j:i, // test comment
@@ -92,7 +101,7 @@ func JsonData() []TestJson {
 					}
 				] 
 			]`,
-			ExpectedJsonString: `["x","y","z","x:x",["t","t",{"j":"i","o":"o","i":[1,2,3,4,5]}]]`,
+			ExpectedJsonString: `["x","y","z","xx",["t","t",{"j":"i","o":"o","i":[1,2,3,4,5]}]]`,
 		},
 		{
 			JsonCString: `{ 1:1, /* */ 2:2,3:3,4:4,5:5}`,
@@ -234,7 +243,13 @@ func JsonDataFmt2() []TestJson {
 
 func TestJsoncFmt(t *testing.T) {
 
-	data := JsonDataFmt2()
+	f, err := os.Open(`test.jsonc`)
+	require.NoError(t, err)
+
+	data, err := ioutil.ReadAll(f)
+	require.NoError(t, err)
+
+	fmt.Printf("dd %s\n", data)
 
 	//data := JsonData()
 
@@ -243,24 +258,21 @@ func TestJsoncFmt(t *testing.T) {
 		panic(err)
 	}
 
-	f := NewFilter(ring, 16, true, " ")
+	fl := NewFilter(ring, 16, true, " ")
 
-	for idx, d := range data {
+	b := strings.NewReader(string(data))
+	ring.Clear(func() (r rune, size int, err error) {
+		return b.ReadRune()
+	})
 
-		b := strings.NewReader(d.JsonCString)
-		ring.Clear(func() (r rune, size int, err error) {
-			return b.ReadRune()
-		})
+	fl.Clear()
 
-		f.Clear()
+	buf := &bytes.Buffer{}
 
-		buf := &bytes.Buffer{}
+	_, err = buf.ReadFrom(fl)
+	require.NoError(t, err)
 
-		_, err := buf.ReadFrom(f)
-		require.NoError(t, err)
-
-		t.Logf("idx: %v jsonc:\n\n##\n%s\n##\n", idx, buf.Bytes())
-	}
+	t.Logf("jsonc:\n\n##\n%s\n##\n", buf.Bytes())
 }
 
 func TestMultilineValue(t *testing.T) {
