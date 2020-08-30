@@ -427,12 +427,12 @@ func (v *ValueMultilineState) Next(f *Filter) error {
 
 type ObjInternalState = int
 
-var (
-	ObjIntNext ObjInternalState = 0
-
-	ObjInternalKey       ObjInternalState = 1
-	ObjInternalDelimiter ObjInternalState = 2
-	ObjInternalValue     ObjInternalState = 3
+const (
+	ObjIntNextAfterComma ObjInternalState = iota
+	ObjIntNext
+	ObjInternalKey
+	ObjInternalDelimiter
+	ObjInternalValue
 )
 
 type ObjectState struct {
@@ -472,6 +472,19 @@ func (o *ObjectState) Next(f *Filter) error {
 
 		switch o.internalState {
 		case ObjIntNext:
+			if ru == '}' {
+				f.pushOut(ru)
+				f.popState()
+				return f.ring.Advance()
+			}
+
+			if o.internalState == ObjIntNext {
+				f.pushOut(',')
+				o.internalState = ObjIntNextAfterComma
+				return nil
+			}
+
+		case ObjIntNextAfterComma:
 
 			if ru == '}' {
 				f.pushOut(ru)
@@ -550,17 +563,15 @@ func (o *ObjectState) Next(f *Filter) error {
 			}
 
 			if ru == ',' {
-				f.pushOut(ru)
 				o.internalState = ObjIntNext
 				return f.ring.Advance()
 			}
 
-			if !f.format {
-				f.pushOut(',')
+			if f.format {
+				o.internalState = ObjIntNextAfterComma
 			} else {
-				f.pushOut(' ')
+				o.internalState = ObjIntNext
 			}
-			o.internalState = ObjIntNext
 			return nil
 		}
 

@@ -30,7 +30,10 @@ func JsonData() []TestJson {
 			JsonCString:        "[]",
 			ExpectedJsonString: `[]`,
 		},
-
+		{
+			JsonCString:        "{x:x,}",
+			ExpectedJsonString: `{"x":"x"}`,
+		},
 		{
 			JsonCString:        "`value`",
 			ExpectedJsonString: `"value"`,
