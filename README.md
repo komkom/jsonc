@@ -74,4 +74,33 @@ lineBreak = "the line break character \n";
 number = "a number as defined by json dot org";
 ```
 
+### Examples
+
+```
+{
+ // A jsonc example. 
+ glossEntry:{
+  id:SGML
+  sortAs:SGML
+  glossTerm:`Standard Generalized Markup language`
+  acronym:SGML
+  abbrev:`ISO 8879:1986`
+  glossDef:{
+   para:`A meta-markup language, used to create markup languages such as DocBook.`
+   glossSeeAlso:[GML XML]
+}}}
+```
+
+```
+{
+ // Another example
+ popup:{
+  menuitem:[
+   {value:New,onclick:`CreateNewDoc()`}
+   {value:Open,onclick:`OpenDoc()`}
+   {value:Close,onclick:`CloseDoc()`}
+  ]
+}}
+```
+
 The formatting behaviour tries to mimic gofmt. Any suggestions, help, fixes welcome.
