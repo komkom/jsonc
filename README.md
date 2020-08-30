@@ -114,7 +114,7 @@ number = "a number as defined by json dot org";
 
 ```
 {
- // A jsonc example
+ // Another example
  glossEntry:{
   id:SGML
   sortAs:SGML
