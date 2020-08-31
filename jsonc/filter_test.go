@@ -19,18 +19,6 @@ type TestJson struct {
 	ExpectedStringInError string
 }
 
-func JsonData2() []TestJson {
-
-	return []TestJson{
-		{
-			JsonCString: ` 
-				[ "t",  "t", [i]
-				]`,
-			ExpectedJsonString: `[["t","t",{"j":"i","o":"o","i":[1,2,3,4,5]}]]`,
-		},
-	}
-}
-
 func JsonData() []TestJson {
 
 	return []TestJson{
@@ -118,7 +106,7 @@ func JsonData() []TestJson {
 	}
 }
 
-func TestJsonParser2(t *testing.T) {
+func TestJsonParser(t *testing.T) {
 
 	data := JsonData()
 
@@ -167,76 +155,6 @@ func TestJsonParser2(t *testing.T) {
 		if d.ExpectedJsonString != `` {
 			assert.Equal(t, d.ExpectedJsonString, string(buf.Bytes()))
 		}
-	}
-}
-
-func JsonDataFmt() []TestJson {
-
-	return []TestJson{
-		{
-			JsonCString: ` /* json description */
-	{ 
-		/* test */
-		t:ttestt /* some other comment */ ,
-		x:x, // should test this 
-		z:[ "test" /* we are in  and in a comment http://www.some.url.com   */  
-		// and a single line comment
-		], 
-		o:123.65e+7      
-	}/* can you also add comments here */`,
-			ExpectedJsonString: `{"t":"ttestt","x":"x","z":["test"],"o":123.65e+7}`,
-		},
-
-		{
-			JsonCString: `{ 1:1, /* */ 2: /* some other comment */ 2,
-			/* another comment */ 7: [1,2,3,4,5,6],
-			3:3,4:4,5:5 /*hmm*/ } // test comment at the end`,
-			ExpectedJsonString: `{"1":1,"2":2,"7":[1,2,3,4,5,6],"3":3,"4":4,"5":5}`,
-		},
-		{
-			JsonCString: `{   }`,
-		},
-		{
-			JsonCString: `{
-			a:b, c:{
-			d: e,
-			e: f
-			}`,
-		},
-	}
-}
-
-func JsonDataFmt2() []TestJson {
-
-	return []TestJson{
-		{
-			JsonCString: `{a:a ,    b:b}`,
-		},
-		{
-			JsonCString: `{ a:b, c:{ d: {
-
-			t: t,
-			r: {/*test
- asda
- asdf
-*/
-			t:1
-			t:4
-			}
-			},
-			e/*ii*/: f       //comment
-			c: [ 
-			1, 3, 4, 5,     6,
-			7, 8,
-			9 ,20]
-			}}`,
-		},
-		{
-			JsonCString: `{}`,
-		},
-		{
-			JsonCString: `[]`,
-		},
 	}
 }
 
