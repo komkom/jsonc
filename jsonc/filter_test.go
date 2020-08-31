@@ -300,9 +300,5 @@ func TestMultilineValue(t *testing.T) {
 
 	ret := buf.String()
 	assert.Contains(t, ret, `"quote":"\""`)
-	assert.Contains(t, ret, `"solidus":"\/"`)
-	assert.Contains(t, ret, `"fromFeed":"\f"`)
 	assert.Contains(t, ret, `"lineFeed":"\n"`)
-	assert.Contains(t, ret, `"carriageReturn":"\r"`)
-	assert.Contains(t, ret, `"tab":"\t"`)
 }

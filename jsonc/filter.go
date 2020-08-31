@@ -283,26 +283,13 @@ func (v *ValueNoQuoteState) Next(ru rune, f *Filter) error {
 	return nil
 }
 
-const (
-	quotationMark  = '"'
-	solidus        = '\u002F'
-	formFeed       = '\u000C'
-	lineFeed       = '\n'
-	carriageReturn = '\r'
-	tab            = '\u0009'
-)
-
 var (
 	multilineEscapes = []struct {
 		code    rune
 		replace rune
 	}{
-		{code: quotationMark, replace: '"'},
-		{code: solidus, replace: solidus},
-		{code: formFeed, replace: 'f'},
-		{code: lineFeed, replace: 'n'},
-		{code: carriageReturn, replace: 'r'},
-		{code: tab, replace: 't'},
+		{code: '"', replace: '"'},
+		{code: '\n', replace: 'n'},
 	}
 )
 
@@ -405,10 +392,12 @@ func (o *ObjectState) pop(f *Filter) error {
 
 func (o *ObjectState) Next(ru rune, f *Filter) error {
 
-	if unicode.IsSpace(ru) || unicode.IsControl(ru) {
-		if ru == '\n' {
-			o.lineBreaks++
-		}
+	if ru == '\n' {
+		o.lineBreaks++
+		return nil
+	}
+
+	if unicode.IsSpace(ru) {
 		return nil
 	}
 
@@ -545,11 +534,11 @@ func (ArrayState) Type() TokenType {
 
 func (a *ArrayState) Next(ru rune, f *Filter) error {
 
-	if unicode.IsSpace(ru) || unicode.IsControl(ru) {
-		if ru == '\n' {
-			a.lineBreaks++
-		}
+	if ru == '\n' {
+		a.lineBreaks++
+	}
 
+	if unicode.IsSpace(ru) {
 		a.spaceOrControls++
 		return nil
 	}
@@ -812,7 +801,26 @@ func (f *Filter) fill() error {
 
 	state := f.peekState()
 	for f.outMinSize > len(f.outbuf) {
-		err := state.Next(f.ring.Peek(), f)
+
+		ru := f.ring.Peek()
+
+		if ru != '\n' {
+			// let only '\n' new line pass from the set of control characters
+			if unicode.IsControl(ru) {
+				err := f.ring.Advance()
+				if err != nil {
+					return err
+				}
+				continue
+			}
+
+			// transform al the spaces to single spaces
+			if unicode.IsSpace(ru) {
+				ru = ' '
+			}
+		}
+
+		err := state.Next(ru, f)
 		if err != nil && !errors.Is(err, ErrDontAdvance) {
 			return err
 		}
