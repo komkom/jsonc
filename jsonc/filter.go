@@ -71,73 +71,74 @@ func (r *RootState) Type() TokenType {
 
 func (r *RootState) Next(f *Filter) error {
 
-	for {
-		ru := f.ring.Peek()
+	ru := f.ring.Peek()
 
-		if f.format {
-			if ru == '\n' {
-				f.pushOut(ru)
-			}
+	if f.format {
+		if ru == '\n' {
+			f.pushOut(ru)
 		}
+	}
 
-		// check if comments need to be dispatched
-		dispatch, err := dispatchComment(f, nil)
-		if err != nil {
+	// check if comments need to be dispatched
+	dispatch, err := dispatchComment(f, nil)
+	if err != nil {
+		return err
+	}
+
+	if dispatch {
+		return nil
+	}
+
+	if !r.init {
+		switch ru {
+		case '{':
+			r.init = true
+			f.pushOut(ru)
+			err = f.ring.Advance()
+			f.pushState(&ObjectState{})
 			return err
-		}
 
-		if dispatch {
-			return nil
-		}
+		case '[':
+			r.init = true
+			f.pushOut(ru)
+			err = f.ring.Advance()
+			f.pushState(&ArrayState{})
+			return err
 
-		if !r.init {
-			switch ru {
-			case '{':
-				r.init = true
+		case '"':
+			r.init = true
+			f.pushOut(ru)
+			err = f.ring.Advance()
+			f.pushState(&ValueState{})
+			return err
+
+		case '`':
+			r.init = true
+			if f.format {
 				f.pushOut(ru)
-				err = f.ring.Advance()
-				f.pushState(&ObjectState{})
-				return err
-
-			case '[':
-				r.init = true
-				f.pushOut(ru)
-				err = f.ring.Advance()
-				f.pushState(&ArrayState{})
-				return err
-
-			case '"':
-				r.init = true
-				f.pushOut(ru)
-				err = f.ring.Advance()
-				f.pushState(&ValueState{})
-				return err
-
-			case '`':
-				r.init = true
-				if f.format {
-					f.pushOut(ru)
-				} else {
-					f.pushOut('"')
-				}
-				err = f.ring.Advance()
-				f.pushState(&ValueMultilineState{})
-				return err
+			} else {
+				f.pushOut('"')
 			}
-		}
-
-		if !unicode.IsSpace(ru) {
-			return Errorf("invalid first character: %v", -1, string(ru))
-		}
-
-		err = f.ring.Advance()
-		if err != nil {
+			err = f.ring.Advance()
+			f.pushState(&ValueMultilineState{})
 			return err
 		}
 	}
+
+	if !unicode.IsSpace(ru) {
+		return Errorf("invalid first character: %v", -1, string(ru))
+	}
+
+	err = f.ring.Advance()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-type KeyState struct{}
+type KeyState struct {
+	escaped bool
+}
 
 func (o *KeyState) Type() TokenType {
 	return Key
@@ -145,32 +146,32 @@ func (o *KeyState) Type() TokenType {
 
 func (r *KeyState) Next(f *Filter) error {
 
-	var escaped bool
-	for {
-		ru := f.ring.Peek()
+	ru := f.ring.Peek()
 
-		if !escaped && ru == '"' {
-
-			f.pushOut(ru)
-			f.popState()
-			return f.ring.Advance()
-		}
-
-		escaped = false
-		if ru == '\\' {
-			escaped = true
-		}
+	if !r.escaped && ru == '"' {
 
 		f.pushOut(ru)
-
-		err := f.ring.Advance()
-		if err != nil {
-			return err
-		}
+		f.popState()
+		return f.ring.Advance()
 	}
+
+	r.escaped = false
+	if ru == '\\' {
+		r.escaped = true
+	}
+
+	f.pushOut(ru)
+
+	err := f.ring.Advance()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-type ValueState struct{}
+type ValueState struct {
+	escaped bool
+}
 
 func (v *ValueState) Type() TokenType {
 	return Value
@@ -178,32 +179,30 @@ func (v *ValueState) Type() TokenType {
 
 func (v *ValueState) Next(f *Filter) error {
 
-	var escaped bool
-	for {
-		ru := f.ring.Peek()
+	ru := f.ring.Peek()
 
-		if !escaped && ru == '\n' {
-			return fmt.Errorf(`line break in string value`)
-		}
-
-		if !escaped && ru == '"' {
-			f.pushOut(ru)
-			f.popState()
-			return f.ring.Advance()
-		}
-
-		escaped = false
-		if ru == '\\' {
-			escaped = true
-		}
-
-		f.pushOut(ru)
-
-		err := f.ring.Advance()
-		if err != nil {
-			return err
-		}
+	if !v.escaped && ru == '\n' {
+		return fmt.Errorf(`line break in string value`)
 	}
+
+	if !v.escaped && ru == '"' {
+		f.pushOut(ru)
+		f.popState()
+		return f.ring.Advance()
+	}
+
+	v.escaped = false
+	if ru == '\\' {
+		v.escaped = true
+	}
+
+	f.pushOut(ru)
+
+	err := f.ring.Advance()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 type KeyNoQuoteState struct {
@@ -216,42 +215,41 @@ func (o *KeyNoQuoteState) Type() TokenType {
 
 func (r *KeyNoQuoteState) Next(f *Filter) error {
 
-	for {
-		ru := f.ring.Peek()
+	ru := f.ring.Peek()
 
-		if !r.notFirst {
-			if !unicode.IsLetter(ru) && !unicode.IsDigit(ru) {
-				return Errorf("invalid key", f.ring.Position())
-			}
-		}
-
-		if !f.format {
-			if !r.notFirst {
-				f.pushOut('"')
-			}
-		}
-		r.notFirst = true
-
-		if ru == ':' || ru == '/' || unicode.IsSpace(ru) {
-
-			if !f.format {
-				f.pushOut('"')
-			}
-			f.popState()
-			return nil
-		}
-
+	if !r.notFirst {
 		if !unicode.IsLetter(ru) && !unicode.IsDigit(ru) {
 			return Errorf("invalid key", f.ring.Position())
 		}
+	}
 
-		f.pushOut(ru)
-
-		err := f.ring.Advance()
-		if err != nil {
-			return err
+	if !f.format {
+		if !r.notFirst {
+			f.pushOut('"')
 		}
 	}
+	r.notFirst = true
+
+	if ru == ':' || ru == '/' || unicode.IsSpace(ru) {
+
+		if !f.format {
+			f.pushOut('"')
+		}
+		f.popState()
+		return nil
+	}
+
+	if !unicode.IsLetter(ru) && !unicode.IsDigit(ru) {
+		return Errorf("invalid key", f.ring.Position())
+	}
+
+	f.pushOut(ru)
+
+	err := f.ring.Advance()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 type ValueNoQuoteState struct {
@@ -299,29 +297,28 @@ func (r *ValueNoQuoteState) Next(f *Filter) error {
 		return nil
 	}
 
-	for {
-		ru := f.ring.Peek()
+	ru := f.ring.Peek()
 
-		if unicode.IsSpace(ru) || ru == ',' || ru == '}' || ru == ']' || ru == '/' {
+	if unicode.IsSpace(ru) || ru == ',' || ru == '}' || ru == ']' || ru == '/' {
 
-			return renderValue()
-		}
-
-		if !unicode.IsLetter(ru) && !unicode.IsDigit(ru) && ru != '.' && ru != '+' {
-			return Errorf("invalid identifier", f.ring.Position())
-		}
-
-		if ru == '\\' {
-			return Errorf("invalid identifier", f.ring.Position())
-		}
-
-		r.cval = append(r.cval, byte(ru))
-
-		err := f.ring.Advance()
-		if err != nil {
-			return err
-		}
+		return renderValue()
 	}
+
+	if !unicode.IsLetter(ru) && !unicode.IsDigit(ru) && ru != '.' && ru != '+' {
+		return Errorf("invalid identifier", f.ring.Position())
+	}
+
+	if ru == '\\' {
+		return Errorf("invalid identifier", f.ring.Position())
+	}
+
+	r.cval = append(r.cval, byte(ru))
+
+	err := f.ring.Advance()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 const (
@@ -366,26 +363,25 @@ func (v *ValueMultilineState) Type() TokenType {
 func (v *ValueMultilineState) Next(f *Filter) error {
 
 	if f.format {
-		for {
-			ru := f.ring.Peek()
+		ru := f.ring.Peek()
 
-			if ru == '`' {
-				f.pushOut(ru)
-				f.popState()
-				return f.ring.Advance()
-			}
-
-			if ru == '\\' {
-				return fmt.Errorf("character \\ found in multiline string")
-
-			}
-
+		if ru == '`' {
 			f.pushOut(ru)
-			err := f.ring.Advance()
-			if err != nil {
-				return err
-			}
+			f.popState()
+			return f.ring.Advance()
 		}
+
+		if ru == '\\' {
+			return fmt.Errorf("character \\ found in multiline string")
+
+		}
+
+		f.pushOut(ru)
+		err := f.ring.Advance()
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 
 	for {
@@ -464,129 +460,129 @@ func (o *ObjectState) pop(f *Filter) error {
 
 func (o *ObjectState) Next(f *Filter) error {
 
-	for {
-		ru := f.ring.Peek()
+	ru := f.ring.Peek()
 
-		if unicode.IsSpace(ru) || unicode.IsControl(ru) {
-			if ru == '\n' {
-				o.lineBreaks++
-			}
-			return f.ring.Advance()
+	if unicode.IsSpace(ru) || unicode.IsControl(ru) {
+		if ru == '\n' {
+			o.lineBreaks++
+		}
+		return f.ring.Advance()
+	}
+
+	// check if comments need to be dispatched
+	dispatch, err := dispatchComment(f, nil)
+	if err != nil {
+		return err
+	}
+
+	if dispatch {
+		return nil
+	}
+
+	switch o.internalState {
+	case ObjIntNext:
+
+		if ru == '}' {
+			return o.pop(f)
 		}
 
-		// check if comments need to be dispatched
-		dispatch, err := dispatchComment(f, nil)
-		if err != nil {
+		f.pushOut(',')
+		o.internalState = ObjIntNextAfterComma
+		return nil
+
+	case ObjIntNextAfterComma:
+
+		if ru == '}' {
+			return o.pop(f)
+		}
+
+		if f.format && o.lineBreaks > 0 {
+			f.pushOutMult(o.lineBreaks, 1, '\n')
+			if o.lineBreaks > 0 {
+				f.pushSpaces(f.indent())
+			}
+			o.lineBreaks = 0
+		}
+
+		o.internalState = ObjInternalKey
+		if ru == '"' {
+			f.pushOut(ru)
+			err = f.ring.Advance()
+			f.pushState(&KeyState{})
 			return err
 		}
 
-		if dispatch {
-			return nil
+		f.pushState(&KeyNoQuoteState{})
+		return nil
+
+	case ObjInternalKey:
+
+		if ru == ':' {
+			f.pushOut(ru)
+			o.internalState = ObjInternalDelimiter
+			return f.ring.Advance()
 		}
 
-		switch o.internalState {
-		case ObjIntNext:
+		return Errorf("error parsing object rune: %v", f.ring.Position(), string(ru))
 
-			if ru == '}' {
-				return o.pop(f)
-			}
+	case ObjInternalDelimiter:
 
-			f.pushOut(',')
-			o.internalState = ObjIntNextAfterComma
-			return nil
+		o.internalState = ObjInternalValue
+		switch ru {
+		case '[':
+			f.pushOut(ru)
+			err = f.ring.Advance()
+			f.pushState(&ArrayState{})
+			return err
 
-		case ObjIntNextAfterComma:
+		case '{':
+			f.pushOut(ru)
+			err = f.ring.Advance()
+			f.pushState(&ObjectState{})
+			return err
 
-			if ru == '}' {
-				return o.pop(f)
-			}
+		case '"':
+			f.pushOut(ru)
+			err = f.ring.Advance()
+			f.pushState(&ValueState{})
+			return err
 
-			if f.format && o.lineBreaks > 0 {
-				f.pushOutMult(o.lineBreaks, 1, '\n')
-				if o.lineBreaks > 0 {
-					f.pushSpaces(f.indent())
-				}
-				o.lineBreaks = 0
-			}
-
-			o.internalState = ObjInternalKey
-			if ru == '"' {
-				f.pushOut(ru)
-				err = f.ring.Advance()
-				f.pushState(&KeyState{})
-				return err
-			}
-
-			f.pushState(&KeyNoQuoteState{})
-			return nil
-
-		case ObjInternalKey:
-
-			if ru == ':' {
-				f.pushOut(ru)
-				o.internalState = ObjInternalDelimiter
-				return f.ring.Advance()
-			}
-
-			return Errorf("error parsing object rune: %v", f.ring.Position(), string(ru))
-
-		case ObjInternalDelimiter:
-
-			o.internalState = ObjInternalValue
-			switch ru {
-			case '[':
-				f.pushOut(ru)
-				err = f.ring.Advance()
-				f.pushState(&ArrayState{})
-				return err
-
-			case '{':
-				f.pushOut(ru)
-				err = f.ring.Advance()
-				f.pushState(&ObjectState{})
-				return err
-
-			case '"':
-				f.pushOut(ru)
-				err = f.ring.Advance()
-				f.pushState(&ValueState{})
-				return err
-
-			case '`':
-				if f.format {
-					f.pushOut(ru)
-				} else {
-					f.pushOut('"')
-				}
-				err = f.ring.Advance()
-				f.pushState(&ValueMultilineState{})
-				return err
-			default:
-				f.pushState(&ValueNoQuoteState{})
-				return nil
-			}
-
-		case ObjInternalValue:
-
-			if ru == '}' {
-				return o.pop(f)
-			}
-
-			if ru == ',' {
-				o.internalState = ObjIntNext
-				return f.ring.Advance()
-			}
-
+		case '`':
 			if f.format {
-				if o.lineBreaks == 0 {
-					f.pushOut(' ')
-				}
-				o.internalState = ObjIntNextAfterComma
+				f.pushOut(ru)
 			} else {
-				o.internalState = ObjIntNext
+				f.pushOut('"')
 			}
+			err = f.ring.Advance()
+			f.pushState(&ValueMultilineState{})
+			return err
+		default:
+			f.pushState(&ValueNoQuoteState{})
 			return nil
 		}
+
+	case ObjInternalValue:
+
+		if ru == '}' {
+			return o.pop(f)
+		}
+
+		if ru == ',' {
+			o.internalState = ObjIntNext
+			return f.ring.Advance()
+		}
+
+		if f.format {
+			if o.lineBreaks == 0 {
+				f.pushOut(' ')
+			}
+			o.internalState = ObjIntNextAfterComma
+		} else {
+			o.internalState = ObjIntNext
+		}
+		return nil
+	default:
+		return Errorf("invalid internal object state: %v", f.ring.Position(), string(ru))
 	}
 }
 
@@ -611,115 +607,115 @@ func (ArrayState) Type() TokenType {
 
 func (a *ArrayState) Next(f *Filter) error {
 
-	for {
-		ru := f.ring.Peek()
+	ru := f.ring.Peek()
 
-		if unicode.IsSpace(ru) || unicode.IsControl(ru) {
-			if ru == '\n' {
-				a.lineBreaks++
+	if unicode.IsSpace(ru) || unicode.IsControl(ru) {
+		if ru == '\n' {
+			a.lineBreaks++
+		}
+
+		a.spaceOrControls++
+		return f.ring.Advance()
+	}
+
+	// check if comments need to be dispatched
+	dispatch, err := dispatchComment(f, nil)
+	if err != nil {
+		return err
+	}
+
+	if dispatch {
+		return nil
+	}
+
+	switch a.internalState {
+	case ArrayIntAfterValue:
+
+		spaceOrControls := a.spaceOrControls
+		a.spaceOrControls = 0
+
+		switch ru {
+		case ']':
+			a.internalState = ArrayIntValue
+			return nil
+		case ',':
+			a.internalState = ArrayIntValue
+			if f.format {
+				f.pushOut(',')
 			}
-
-			a.spaceOrControls++
 			return f.ring.Advance()
 		}
 
-		// check if comments need to be dispatched
-		dispatch, err := dispatchComment(f, nil)
-		if err != nil {
-			return err
-		}
-
-		if dispatch {
+		if spaceOrControls > 0 {
+			if f.format && a.lineBreaks == 0 {
+				f.pushOut(' ')
+			}
+			a.internalState = ArrayIntValue
 			return nil
 		}
 
-		switch a.internalState {
-		case ArrayIntAfterValue:
+		return Errorf("invalid character after value", f.ring.Position())
 
-			spaceOrControls := a.spaceOrControls
-			a.spaceOrControls = 0
+	case ArrayIntStart, ArrayIntValue:
 
-			switch ru {
-			case ']':
-				a.internalState = ArrayIntValue
-				return nil
-			case ',':
-				a.internalState = ArrayIntValue
-				if f.format {
-					f.pushOut(',')
-				}
-				return f.ring.Advance()
-			}
-
-			if spaceOrControls > 0 {
-				if f.format && a.lineBreaks == 0 {
-					f.pushOut(' ')
-				}
-				a.internalState = ArrayIntValue
-				return nil
-			}
-
-			return Errorf("invalid character after value", f.ring.Position())
-
-		case ArrayIntStart, ArrayIntValue:
-
-			if ru == ']' {
-				if f.format {
-					f.pushOutMult(a.lineBreaks, 1, '\n')
-					f.pushSpaces(f.indent() - 1)
-				}
-				f.popState()
-				f.pushOut(ru)
-				return f.ring.Advance()
-			}
-
-			if a.internalState != ArrayIntStart && !f.format {
-				f.pushOut(',')
-			}
-
+		if ru == ']' {
 			if f.format {
 				f.pushOutMult(a.lineBreaks, 1, '\n')
-				if a.lineBreaks > 0 {
-					f.pushSpaces(f.indent())
-				}
-				a.lineBreaks = 0
+				f.pushSpaces(f.indent() - 1)
 			}
-
-			a.internalState = ArrayIntAfterValue
-			switch ru {
-			case '[':
-				f.pushOut(ru)
-				err = f.ring.Advance()
-				f.pushState(&ArrayState{})
-
-				return err
-
-			case '{':
-				f.pushOut(ru)
-				err = f.ring.Advance()
-				f.pushState(&ObjectState{})
-				return err
-
-			case '"':
-				f.pushOut(ru)
-				err = f.ring.Advance()
-				f.pushState(&ValueState{})
-				return err
-
-			case '`':
-				if f.format {
-					f.pushOut(ru)
-				} else {
-					f.pushOut('"')
-				}
-				err = f.ring.Advance()
-				f.pushState(&ValueMultilineState{})
-				return err
-			default:
-				f.pushState(&ValueNoQuoteState{})
-				return nil
-			}
+			f.popState()
+			f.pushOut(ru)
+			return f.ring.Advance()
 		}
+
+		if a.internalState != ArrayIntStart && !f.format {
+			f.pushOut(',')
+		}
+
+		if f.format {
+			f.pushOutMult(a.lineBreaks, 1, '\n')
+			if a.lineBreaks > 0 {
+				f.pushSpaces(f.indent())
+			}
+			a.lineBreaks = 0
+		}
+
+		a.internalState = ArrayIntAfterValue
+		switch ru {
+		case '[':
+			f.pushOut(ru)
+			err = f.ring.Advance()
+			f.pushState(&ArrayState{})
+
+			return err
+
+		case '{':
+			f.pushOut(ru)
+			err = f.ring.Advance()
+			f.pushState(&ObjectState{})
+			return err
+
+		case '"':
+			f.pushOut(ru)
+			err = f.ring.Advance()
+			f.pushState(&ValueState{})
+			return err
+
+		case '`':
+			if f.format {
+				f.pushOut(ru)
+			} else {
+				f.pushOut('"')
+			}
+			err = f.ring.Advance()
+			f.pushState(&ValueMultilineState{})
+			return err
+		default:
+			f.pushState(&ValueNoQuoteState{})
+			return nil
+		}
+	default:
+		return Errorf("invalid internal array state: %v", f.ring.Position(), string(ru))
 	}
 }
 
@@ -781,29 +777,30 @@ func (c *CommentState) Type() TokenType {
 
 func (c *CommentState) Next(f *Filter) error {
 
-	for {
-		ru := f.ring.Peek()
+	ru := f.ring.Peek()
 
-		if ru == '\n' {
-			f.popState()
-			return nil
-		}
-
-		if f.format {
-			f.pushOut(ru)
-		}
-
-		err := f.ring.Advance()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				f.popState()
-			}
-			return err
-		}
+	if ru == '\n' {
+		f.popState()
+		return nil
 	}
+
+	if f.format {
+		f.pushOut(ru)
+	}
+
+	err := f.ring.Advance()
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			f.popState()
+		}
+		return err
+	}
+	return nil
 }
 
-type CommentMultiLineState struct{}
+type CommentMultiLineState struct {
+	escaped bool
+}
 
 func (c *CommentMultiLineState) Type() TokenType {
 	return CommentMultiLine
@@ -811,44 +808,43 @@ func (c *CommentMultiLineState) Type() TokenType {
 
 func (c *CommentMultiLineState) Next(f *Filter) error {
 
-	var escaped bool
-	for {
-		ru := f.ring.Peek()
-		if !escaped && ru == '*' {
-
-			err := f.ring.Advance()
-			if err != nil {
-				return err
-			}
-
-			ru = f.ring.Peek()
-			if ru == '/' {
-
-				if f.format {
-					f.pushOut('*')
-					f.pushOut('/')
-				}
-
-				f.popState()
-				return f.ring.Advance()
-			}
-
-			f.ring.Pop()
-		}
-
-		if ru == '\\' {
-			escaped = true
-		}
-
-		if f.format {
-			f.pushOut(ru)
-		}
+	ru := f.ring.Peek()
+	if !c.escaped && ru == '*' {
 
 		err := f.ring.Advance()
 		if err != nil {
 			return err
 		}
+
+		ru = f.ring.Peek()
+		if ru == '/' {
+
+			if f.format {
+				f.pushOut('*')
+				f.pushOut('/')
+			}
+
+			f.popState()
+			return f.ring.Advance()
+		}
+
+		f.ring.Pop()
 	}
+
+	c.escaped = false
+	if ru == '\\' {
+		c.escaped = true
+	}
+
+	if f.format {
+		f.pushOut(ru)
+	}
+
+	err := f.ring.Advance()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (f *Filter) Read(p []byte) (n int, err error) {
