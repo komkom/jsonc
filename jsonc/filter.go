@@ -309,14 +309,14 @@ func (v *ValueMultilineState) Type() TokenType {
 	return Value
 }
 
-func (*ValueMultilineState) Next(ru rune, f *Filter) error {
+func (v *ValueMultilineState) Next(ru rune, f *Filter) error {
 
 	if f.format {
 
 		if ru == '`' {
 			f.pushOut(ru)
 			f.popState()
-			return f.ring.Advance()
+			return nil
 		}
 
 		if ru == '\\' {
@@ -325,10 +325,6 @@ func (*ValueMultilineState) Next(ru rune, f *Filter) error {
 		}
 
 		f.pushOut(ru)
-		err := f.ring.Advance()
-		if err != nil {
-			return err
-		}
 		return nil
 	}
 
@@ -699,6 +695,9 @@ func (*CommentState) Next(ru rune, f *Filter) error {
 
 	if ru == '\n' {
 		f.popState()
+		if f.format {
+			f.pushOut('\n')
+		}
 		return nil
 	}
 
