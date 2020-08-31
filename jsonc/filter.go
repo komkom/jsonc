@@ -14,7 +14,7 @@ type State interface {
 	Next(r rune, f *Filter) error
 }
 
-var ErrDontAdvance = fmt.Errorf(`dont-advance`)
+var ErrDontAdvance = fmt.Errorf(`do-not-advance`)
 
 const (
 	Root             TokenType = iota // 0
@@ -813,7 +813,7 @@ func (f *Filter) fill() error {
 				continue
 			}
 
-			// transform al the spaces to single spaces
+			// transform all spaces to single spaces
 			if unicode.IsSpace(ru) {
 				ru = ' '
 			}
