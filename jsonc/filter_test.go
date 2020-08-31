@@ -3,7 +3,6 @@ package jsonc
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -241,6 +240,7 @@ func JsonDataFmt2() []TestJson {
 	}
 }
 
+/*
 func TestJsoncFmt(t *testing.T) {
 
 	f, err := os.Open(`test.jsonc`)
@@ -274,6 +274,7 @@ func TestJsoncFmt(t *testing.T) {
 
 	t.Logf("jsonc:\n\n##\n%s\n##\n", buf.Bytes())
 }
+*/
 
 func TestMultilineValue(t *testing.T) {
 
