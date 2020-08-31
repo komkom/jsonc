@@ -1,0 +1,27 @@
+[ {x:oo},     {},
+1, 2, 3, 4, { x:x,
+y:y, x: {
+ z:z, a:[
+1,/* comment */ 
+2, {x:`test 
+test`
+u:i o:/*comment*/"tt"}, // comment
+]
+}
+}
+]
+##
+[{x:oo},{},
+ 1,2,3,4,{x:x,
+  y:y,x:{
+   z:z,a:[
+    1, /* comment */
+    2,{x:`test 
+test`
+     u:i o: /*comment*/"tt"}, // comment
+   ]
+  }
+ }
+]
+###
+

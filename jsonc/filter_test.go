@@ -240,41 +240,66 @@ func JsonDataFmt2() []TestJson {
 	}
 }
 
-/*
-func TestJsoncFmt(t *testing.T) {
-
-	f, err := os.Open(`test.jsonc`)
-	require.NoError(t, err)
-
-	data, err := ioutil.ReadAll(f)
-	require.NoError(t, err)
-
-	fmt.Printf("dd %s\n", data)
-
-	//data := JsonData()
-
-	ring, err := NewRing(32, 16, nil)
-	if err != nil {
-		panic(err)
-	}
-
-	fl := NewFilter(ring, 16, true, " ")
-
-	b := strings.NewReader(string(data))
-	ring.Clear(func() (r rune, size int, err error) {
-		return b.ReadRune()
-	})
-
-	fl.Clear()
-
-	buf := &bytes.Buffer{}
-
-	_, err = buf.ReadFrom(fl)
-	require.NoError(t, err)
-
-	t.Logf("jsonc:\n\n##\n%s\n##\n", buf.Bytes())
+func TestObjectFmt(t *testing.T) {
+	testFormattingFile(t, `test-objects.txt`)
 }
-*/
+
+func TestArrayFmt(t *testing.T) {
+	testFormattingFile(t, `test-arrays.txt`)
+}
+
+func TestComplexFmt(t *testing.T) {
+	testFormattingFile(t, `test-complex.txt`)
+}
+
+func testFormattingFile(t *testing.T, path string) {
+
+	f, err := os.Open(path)
+	require.NoError(t, err)
+
+	d, err := ioutil.ReadAll(f)
+	require.NoError(t, err)
+	data := string(d)
+
+	firstSplit := strings.Split(data, "###")
+
+	require.True(t, len(firstSplit) > 0)
+
+	for idx, d := range firstSplit {
+
+		t.Log(`idx`, idx)
+
+		d = strings.TrimSpace(d)
+
+		if d == `` && len(firstSplit)-1 == idx {
+			break
+		}
+
+		split := strings.Split(d, "##")
+		require.Equal(t, 2, len(split))
+
+		in := split[0]
+		expected := split[1][1:] + "\n"
+
+		ring, err := NewRing(32, 16, nil)
+		if err != nil {
+			panic(err)
+		}
+
+		fl := NewFilter(ring, 16, true, " ")
+
+		b := strings.NewReader(in)
+		ring.Clear(func() (r rune, size int, err error) {
+			return b.ReadRune()
+		})
+
+		buf := &bytes.Buffer{}
+
+		_, err = buf.ReadFrom(fl)
+		require.NoError(t, err)
+		require.Equal(t, expected, string(buf.Bytes()))
+	}
+}
 
 func TestMultilineValue(t *testing.T) {
 

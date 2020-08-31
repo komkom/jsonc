@@ -414,7 +414,9 @@ func (o *ObjectState) Next(ru rune, f *Filter) error {
 			return o.pop(f)
 		}
 
-		f.pushOut(',')
+		if !f.format {
+			f.pushOut(',')
+		}
 		o.internalState = ObjIntNextAfterComma
 		return ErrDontAdvance
 
@@ -491,6 +493,10 @@ func (o *ObjectState) Next(ru rune, f *Filter) error {
 		}
 
 		if ru == ',' {
+
+			if f.format {
+				f.pushOut(',')
+			}
 			o.internalState = ObjIntNext
 			return nil
 		}
