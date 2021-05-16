@@ -60,7 +60,6 @@ func process(dir string, files []os.FileInfo, minimize bool) error {
 			fending := `.tmp`
 			if minimize {
 				fending = `.json`
-
 			}
 
 			f, err = os.Create(dir + `/` + name + fending)
@@ -95,7 +94,6 @@ func main() {
 	if *path != `` {
 
 		check := func(err error) {
-
 			if err != nil {
 				fmt.Printf("path: %v error: %v", *path, err)
 				os.Exit(1)
@@ -123,7 +121,7 @@ func main() {
 
 		case mode.IsRegular():
 
-			process(dir, []os.FileInfo{fi}, *minimize)
+			err = process(dir, []os.FileInfo{fi}, *minimize)
 			check(err)
 
 			break
