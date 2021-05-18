@@ -13,6 +13,6 @@ RUN go get -d -v ./...; \
 CGO_ENABLED=0 go install -ldflags '-extldflags "-static"' -tags timetzdata -v ./...
 
 FROM scratch
-COPY --from=build /go/bin/cmd /app
+COPY --from=build /go/bin/cmd /bin/jsonc
 
-CMD ["/app"]
+CMD ["/bin/jsonc"]
