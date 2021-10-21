@@ -42,11 +42,6 @@ Prints the minified json.
 jsonc -m < somefile.jsonc 
 ```
 
-To format a json.
-```bash
-jsonc -m < somefile.json
-```
-
 ## Syntax
 Here is a first attempt to formalize the jsonc syntax in [ebnf](https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form).
 
