@@ -2,13 +2,9 @@ package jsonc
 
 import "io"
 
-func New(r io.Reader, minimize bool, space string) (*Filter, error) {
+func New(r io.RuneReader, minimize bool, space string) (*Filter, error) {
 
-	buf := NewBuffer(r, 256, 64)
-
-	ring, err := NewRing(256, 64, func() (r rune, size int, err error) {
-		return buf.ReadRune()
-	})
+	ring, err := NewRing(256, 64, r.ReadRune)
 
 	if err != nil {
 		return nil, err

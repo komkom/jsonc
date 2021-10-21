@@ -4,33 +4,24 @@ import (
 	"encoding/json"
 	"io"
 	"io/ioutil"
-	"log"
 
 	"github.com/pkg/errors"
 )
 
 type Decoder struct {
-	r      io.Reader
-	log    *log.Logger
 	filter *Filter
 }
 
 type Options = func(dec Decoder)
 
-func NewDecoder(r io.Reader, opts ...Options) (*Decoder, error) {
-	dec := Decoder{r: r}
+func NewDecoder(r io.RuneReader, opts ...Options) (*Decoder, error) {
 
-	buf := NewBuffer(r, 256, 64)
-
-	ring, err := NewRing(256, 64, func() (r rune, size int, err error) {
-		return buf.ReadRune()
-	})
+	ring, err := NewRing(256, 64, r.ReadRune)
 	if err != nil {
 		return nil, err
 	}
 
-	dec.filter = NewFilter(ring, 256, false, ``)
-	return &dec, nil
+	return &Decoder{filter: NewFilter(ring, 256, false, ``)}, nil
 }
 
 func (d *Decoder) Decode(v interface{}) error {
