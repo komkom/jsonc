@@ -376,6 +376,7 @@ const (
 type ObjectState struct {
 	internalState ObjInternalState
 	lineBreaks    int
+	fromComment   bool
 }
 
 func (o *ObjectState) Type() TokenType {
@@ -385,7 +386,7 @@ func (o *ObjectState) Type() TokenType {
 func (o *ObjectState) pop(f *Filter) error {
 
 	if f.format {
-		f.pushOutMult(o.lineBreaks, 1, '\n')
+		f.pushOutMult(o.lineBreaks, 2, '\n')
 		if o.lineBreaks > 0 {
 			f.pushSpaces(f.indent() - 1)
 		}
@@ -408,7 +409,18 @@ func (o *ObjectState) Next(ru rune, f *Filter) error {
 	}
 
 	// check if comments need to be dispatched
-	dispatch, err := dispatchComment(f, nil)
+	dispatch, err := dispatchComment(f, func() error {
+
+		if f.format {
+			o.fromComment = true
+			f.pushOutMult(o.lineBreaks, 2, '\n')
+			if o.lineBreaks > 0 {
+				f.lastOut = utf8.RuneError
+			}
+			o.lineBreaks = 0
+		}
+		return nil
+	})
 	if err != nil {
 		return err
 	}
@@ -436,10 +448,12 @@ func (o *ObjectState) Next(ru rune, f *Filter) error {
 			return o.pop(f)
 		}
 
-		if f.format && o.lineBreaks > 0 {
-			f.pushOutMult(o.lineBreaks, 1, '\n')
-			if o.lineBreaks > 0 {
+		if f.format {
+			f.pushOutMult(o.lineBreaks, 2, '\n')
+
+			if o.lineBreaks > 0 || o.fromComment {
 				f.pushSpaces(f.indent())
+				o.fromComment = false
 			}
 			o.lineBreaks = 0
 		}
@@ -515,7 +529,7 @@ func (o *ObjectState) Next(ru rune, f *Filter) error {
 		}
 
 		if f.format {
-			if o.lineBreaks == 0 {
+			if o.lineBreaks == 0 && !o.fromComment {
 				f.pushOut(' ')
 			}
 			o.internalState = ObjIntNextAfterComma
@@ -541,6 +555,7 @@ type ArrayState struct {
 	internalState   ArrayInternalState
 	lineBreaks      int
 	spaceOrControls int
+	fromComment     bool
 }
 
 func (ArrayState) Type() TokenType {
@@ -559,7 +574,18 @@ func (a *ArrayState) Next(ru rune, f *Filter) error {
 	}
 
 	// check if comments need to be dispatched
-	dispatch, err := dispatchComment(f, nil)
+	dispatch, err := dispatchComment(f, func() error {
+
+		if f.format {
+			a.fromComment = true
+			f.pushOutMult(a.lineBreaks, 2, '\n')
+			if a.lineBreaks > 0 {
+				f.lastOut = utf8.RuneError
+			}
+			a.lineBreaks = 0
+		}
+		return nil
+	})
 	if err != nil {
 		return err
 	}
@@ -587,7 +613,7 @@ func (a *ArrayState) Next(ru rune, f *Filter) error {
 		}
 
 		if spaceOrControls > 0 {
-			if f.format && a.lineBreaks == 0 {
+			if f.format && (a.lineBreaks == 0 && !a.fromComment) {
 				f.pushOut(' ')
 			}
 			a.internalState = ArrayIntValue
@@ -600,8 +626,12 @@ func (a *ArrayState) Next(ru rune, f *Filter) error {
 
 		if ru == ']' {
 			if f.format {
-				f.pushOutMult(a.lineBreaks, 1, '\n')
-				f.pushSpaces(f.indent() - 1)
+				f.pushOutMult(a.lineBreaks, 2, '\n')
+				if a.lineBreaks > 0 || a.fromComment {
+					a.fromComment = false
+					f.pushSpaces(f.indent() - 1)
+				}
+				a.lineBreaks = 0
 			}
 			f.popState()
 			f.pushOut(ru)
@@ -613,8 +643,9 @@ func (a *ArrayState) Next(ru rune, f *Filter) error {
 		}
 
 		if f.format {
-			f.pushOutMult(a.lineBreaks, 1, '\n')
-			if a.lineBreaks > 0 {
+			f.pushOutMult(a.lineBreaks, 2, '\n')
+			if a.lineBreaks > 0 || a.fromComment {
+				a.fromComment = false
 				f.pushSpaces(f.indent())
 			}
 			a.lineBreaks = 0
@@ -887,7 +918,7 @@ func (f *Filter) indent() int {
 }
 
 func (f *Filter) pushSpace() {
-	if f.lastOut != ' ' {
+	if f.lastOut != ' ' && f.lastOut != utf8.RuneError {
 		f.pushOut(' ')
 	}
 }

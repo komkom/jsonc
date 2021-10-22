@@ -12,7 +12,7 @@
 ###
 {x:/*comment*/x,  y:y}
 ##
-{x: /*comment*/x,y: y}
+{x: /*comment*/x, y: y}
 ###
 {x:x,  y:y,}
 ##
