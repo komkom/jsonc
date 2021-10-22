@@ -4,31 +4,31 @@
 ###
 {x:x   y:y}
 ##
-{x:x y:y}
+{x: x y: y}
 ###
 {x:x,  y:y}
 ##
-{x:x,y:y}
+{x: x,y: y}
 ###
 {x:/*comment*/x,  y:y}
 ##
-{x: /*comment*/x,y:y}
+{x: /*comment*/x,y: y}
 ###
 {x:x,  y:y,}
 ##
-{x:x,y:y,}
+{x: x,y: y,}
 ###
 {x:x, y:y}
 ##
-{x:x,y:y}
+{x: x,y: y}
 ###
 {x:x y:y}
 ##
-{x:x y:y}
+{x: x y: y}
 ###
 {"x":"x" "y":"y"}
 ##
-{"x":"x" "y":"y"}
+{"x": "x" "y": "y"}
 ###
 {
 x:x,  
@@ -36,8 +36,8 @@ y:y,
 }
 ##
 {
- x:x,
- y:y,
+ x: x,
+ y: y,
 }
 ###
 {
@@ -46,24 +46,24 @@ y:y
 }
 ##
 {
- x:x,
- y:y
+ x: x,
+ y: y
 }
 ###
 {x:x  
 y:y
 }
 ##
-{x:x
- y:y
+{x: x
+ y: y
 }
 ###
 {x:x //comment 
  y:y
 }
 ##
-{x:x //comment 
- y:y
+{x: x //comment 
+ y: y
 }
 ###
 

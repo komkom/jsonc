@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"unicode"
+	"unicode/utf8"
 )
 
 type TokenType int
@@ -40,11 +41,19 @@ type Filter struct {
 	newlineCount int
 	space        string
 
-	outbuf []byte
+	outbuf  []byte
+	lastOut rune
 }
 
 func NewFilter(ring *Ring, outMinSize int, format bool, space string) *Filter {
-	return &Filter{ring: ring, outMinSize: outMinSize, rootState: &RootState{}, format: format, space: space}
+	return &Filter{
+		ring:       ring,
+		outMinSize: outMinSize,
+		rootState:  &RootState{},
+		format:     format,
+		space:      space,
+		lastOut:    utf8.RuneError,
+	}
 }
 
 func (f *Filter) Clear() {
@@ -53,6 +62,7 @@ func (f *Filter) Clear() {
 	f.stack = nil
 	f.done = false
 	f.err = nil
+	f.lastOut = utf8.RuneError
 }
 
 func (f *Filter) Done() bool {
@@ -223,7 +233,7 @@ func (k *KeyNoQuoteState) Next(ru rune, f *Filter) error {
 }
 
 type ValueNoQuoteState struct {
-	cval []byte
+	cval []rune
 }
 
 func (o *ValueNoQuoteState) Type() TokenType {
@@ -246,7 +256,7 @@ func (v *ValueNoQuoteState) Next(ru rune, f *Filter) error {
 			s == `false` ||
 			s == `null` {
 
-			f.pushBytes(v.cval)
+			f.pushRunes(v.cval)
 			return ErrDontAdvance
 		}
 
@@ -255,13 +265,13 @@ func (v *ValueNoQuoteState) Next(ru rune, f *Filter) error {
 		}
 
 		if f.format {
-			f.pushBytes(v.cval)
+			f.pushRunes(v.cval)
 			return ErrDontAdvance
 		}
 
 		// quote the value
 		f.pushOut('"')
-		f.pushBytes(v.cval)
+		f.pushRunes(v.cval)
 		f.pushOut('"')
 
 		return ErrDontAdvance
@@ -279,7 +289,7 @@ func (v *ValueNoQuoteState) Next(ru rune, f *Filter) error {
 		return Errorf("invalid identifier", f.ring.Position())
 	}
 
-	v.cval = append(v.cval, byte(ru))
+	v.cval = append(v.cval, ru)
 	return nil
 }
 
@@ -448,6 +458,9 @@ func (o *ObjectState) Next(ru rune, f *Filter) error {
 
 		if ru == ':' {
 			f.pushOut(ru)
+			if f.format {
+				f.pushOut(' ')
+			}
 			o.internalState = ObjInternalDelimiter
 			return nil
 		}
@@ -664,7 +677,8 @@ func dispatchComment(f *Filter, postHook func() error) (shouldDispatch bool, err
 			shouldDispatch = true
 			err = f.ring.Advance()
 			if f.format {
-				f.pushBytes([]byte(" //"))
+				f.pushSpace()
+				f.pushRunes([]rune("//"))
 			}
 			f.pushState(&CommentState{})
 			return
@@ -677,7 +691,8 @@ func dispatchComment(f *Filter, postHook func() error) (shouldDispatch bool, err
 
 			shouldDispatch = true
 			if f.format {
-				f.pushBytes([]byte(" /*"))
+				f.pushSpace()
+				f.pushRunes([]rune("/*"))
 			}
 			err = f.ring.Advance()
 			f.pushState(&CommentMultiLineState{})
@@ -871,6 +886,12 @@ func (f *Filter) indent() int {
 	return indent
 }
 
+func (f *Filter) pushSpace() {
+	if f.lastOut != ' ' {
+		f.pushOut(' ')
+	}
+}
+
 func (f *Filter) pushSpaces(c int) {
 	for i := 0; i < c; i++ {
 		f.pushOut(' ')
@@ -878,11 +899,15 @@ func (f *Filter) pushSpaces(c int) {
 }
 
 func (f *Filter) pushOut(r rune) {
+	f.lastOut = r
 	f.outbuf = append(f.outbuf, byte(r))
 }
 
-func (f *Filter) pushBytes(b []byte) {
-	f.outbuf = append(f.outbuf, b...)
+func (f *Filter) pushRunes(runes []rune) {
+	if len(runes) > 0 {
+		f.lastOut = runes[len(runes)-1]
+	}
+	f.outbuf = append(f.outbuf, []byte(string(runes))...)
 }
 
 func (f *Filter) pushOutMult(t int, max int, r rune) {
@@ -892,6 +917,7 @@ func (f *Filter) pushOutMult(t int, max int, r rune) {
 	}
 
 	for i := 0; i < t; i++ {
+		f.lastOut = r
 		f.pushOut(r)
 	}
 }
