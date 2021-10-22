@@ -29,17 +29,6 @@ a {
   color: #ce3309;
 }
 
-header {
-  text-align: center;
-  margin-bottom: 1rem;
-  height: 360px;
-  width: 100%;
-  background-image: url(../header.png);
-  background-repeat: repeat-x;
-  background-size: 1000px 400px;
-  background-position: top center;
-  }
-
 .logo {
   margin: 0 auto;
   width: 11rem;
