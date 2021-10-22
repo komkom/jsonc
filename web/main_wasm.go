@@ -106,9 +106,8 @@ func process(minimize bool) (json string, errpos int, err error) {
 
 	io.Copy(buf, jcr)
 
-	f := jcr.(*jsonc.Filter)
-	if f.Err() != nil && !errors.Is(f.Err(), io.EOF) {
-		err = f.Err()
+	if jcr.Err() != nil && !errors.Is(jcr.Err(), io.EOF) {
+		err = jcr.Err()
 
 		var rerr jsonc.Error
 		if ok := errors.As(err, &rerr); ok {
