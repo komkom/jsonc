@@ -26,6 +26,7 @@ const (
 func main() {
 
 	js.Global().Set(`format`, js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		fmt.Printf("format\n")
 		load()
 		return nil
 	}))

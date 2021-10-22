@@ -6,10 +6,10 @@
 		<link href="https://fonts.googleapis.com/css?family=Open+Sans:400,400i,700" rel="stylesheet">
 		<link rel="stylesheet" href="styles.css">
 		<script src="https://code.jquery.com/jquery-2.x-git.js"></script>
-		<script src="wasm_exec.js"></script>
+		<script src="wasm_exec17.js"></script>
         <script>
             const go = new Go();
-            WebAssembly.instantiateStreaming(fetch("json3.wasm"), go.importObject).then((result) => {
+            WebAssembly.instantiateStreaming(fetch("jsonc.wasm"), go.importObject).then((result) => {
                 go.run(result.instance);
             });
         </script>
@@ -18,15 +18,9 @@
 
 	</head>
 	<body>
-		<header>
-			<div class="logo">
-				<img src="jsonc-logo.svg" alt="JsonC logo">
-			</div>
-		</header>
-
 		<div class="container">
 			<section class="intro">
-				<h1>jsonc</h1>
+				<h1>jsonc Playground</h1>
 				<p>A Json like file format with comments</p>
 			</section>
 			<section class="example">
