@@ -27,28 +27,13 @@
 				<div class="code-mess">
 					<span>Drop your jsonc here:</span>
 					<textarea id="edit" rows="8" cols="80">
-						{
-						/*
-						jsonc example
-						hit Format and check the json output
-						*/
-
-						// forgiving syntax
-						hey:  [this  needs  no  commas]
-
-						// unquoted values
-						give:  [it,  a,  shot]
-
-						/* and lots of comments :) */
-
-						// try it for yourself
-
-						"this":  {
-						"is":  "also",
-						"just":  "a"
-						},
-						"json" : "formatter"
-						}
+// jsonc document
+{
+ key1: value /* comment */
+ key2: `a jsonc
+ multiline 
+ string`
+}
 					</textarea>
 					<div id="format-button" onclick="format()">Format</div>
 				</div>
