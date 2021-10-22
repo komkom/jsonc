@@ -6,7 +6,7 @@ Jsonc is a simplified json format which allows comments and unquoted values deli
 
 Any valid json is also a valid jsonc.
 
-[give it a try](https://komkom.github.io/)
+[give it a try](https://komkom.github.io/jsonc-playground/)
 
 ## Install
 
