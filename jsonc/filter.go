@@ -577,11 +577,11 @@ func (a *ArrayState) Next(ru rune, f *Filter) error {
 	dispatch, err := dispatchComment(f, func() error {
 
 		if f.format {
-			a.fromComment = true
 			f.pushOutMult(a.lineBreaks, 2, '\n')
 			if a.lineBreaks > 0 {
 				f.lastOut = utf8.RuneError
 			}
+			a.fromComment = true
 			a.lineBreaks = 0
 		}
 		return nil

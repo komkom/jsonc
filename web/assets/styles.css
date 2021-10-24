@@ -45,7 +45,7 @@ a {
 
 .container {
   width: 100%;
-  max-width: 980px;
+  max-width: 1024px;
   margin: 0 auto;
   padding: 0 1rem;
 }
@@ -80,8 +80,8 @@ a {
   border: 1px solid #eaeaea;
   background-color: #fafafa;
   padding: 1rem;
-  min-height: 18rem;
-  height: 18rem;
+  min-height: 25rem;
+  height: 25rem;
   max-height: 18rem !important;
   overflow: auto;
 }
