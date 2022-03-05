@@ -45,7 +45,7 @@ jsonc -m < somefile.jsonc
 ## Syntax
 Here is a first attempt to formalize the jsonc syntax in [ebnf](https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form).
 
-```
+```ebnf
 document = type;
 
 type = object | array | basicType;
@@ -71,7 +71,7 @@ number = "a number as defined by json dot org";
 
 ### Examples
 
-```
+```javascript
 // A jsonc example document
 {
  owner:{
@@ -107,7 +107,7 @@ number = "a number as defined by json dot org";
 
 ```
 
-```
+```javascript
 {
  // Another example
  glossEntry:{
@@ -122,7 +122,7 @@ number = "a number as defined by json dot org";
 }}}
 ```
 
-```
+```javascript
 {
  // Another example
  popup:{
