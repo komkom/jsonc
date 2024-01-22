@@ -103,6 +103,13 @@ func JsonData() []TestJson {
 			JsonCString: `{ test// test : value 
 			: key  v : h }`,
 		},
+		{
+			JsonCString: `{
+    "enabled": false,
+    "concurrency": -1
+}`,
+			ExpectedJsonString: `{"enabled":false,"concurrency":-1}`,
+		},
 	}
 }
 

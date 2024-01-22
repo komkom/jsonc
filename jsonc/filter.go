@@ -281,7 +281,7 @@ func (v *ValueNoQuoteState) Next(ru rune, f *Filter) error {
 		return renderValue()
 	}
 
-	if !unicode.IsLetter(ru) && !unicode.IsDigit(ru) && ru != '.' && ru != '+' {
+	if !unicode.IsLetter(ru) && !unicode.IsDigit(ru) && ru != '.' && ru != '+' && ru != '-' {
 		return Errorf("invalid identifier", f.ring.Position())
 	}
 
