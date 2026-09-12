@@ -39,7 +39,7 @@ func (r *Ring) Clear(rr ReadRune) (err error) {
 }
 
 func (r *Ring) Position() int {
-	return r.absPosition + r.position - len(r.buf)
+	return r.absPosition
 }
 
 func (r *Ring) Advance() error {

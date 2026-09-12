@@ -103,6 +103,10 @@ func JsonData() []TestJson {
 			JsonCString: `{ test// test : value 
 			: key  v : h }`,
 		},
+		{
+			JsonCString:        `{ "obj": /* comment */ {"obj":{"obj":{"x":"x"}}} }`,
+			ExpectedJsonString: `{"obj":{"obj":{"obj":{"x":"x"}}}}`,
+		},
 	}
 }
 
