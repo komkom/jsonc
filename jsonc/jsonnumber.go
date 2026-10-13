@@ -1,14 +1,23 @@
 package jsonc
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/pkg/errors"
+)
 
 type NumberState int
 
 const (
 	NumberRoot NumberState = iota
-	ZeroStart
 	Digit
-	PlusMinus
+	DigitToDot
+	DigitEnd
+	Dot
+	StartMinus
+	FirstDigit
+	Exp
 )
 
 const (
@@ -16,92 +25,109 @@ const (
 	Numbers        = "0" + NonZeroNumbers
 )
 
-func IsNumber(value string) bool {
+func IsNumber(value string) error {
 
+	value = strings.TrimSpace(value)
 	if value == "" {
-		return false
+		return errors.Errorf("wrong beginning")
+	}
+	last := value[len(value)-1]
+	if last == '.' || last == 'e' || last == '+' || last == '-' {
+		return fmt.Errorf("invalid ending")
 	}
 
-	s := NumberRoot
+	s := StartMinus
 
-	var hasDot bool
-	var lastRune rune
 	for _, v := range value {
-
-		lastRune = v
+	reloop:
 
 		switch s {
-		case NumberRoot:
+		case StartMinus:
 
 			if v == '-' {
+				s = NumberRoot
 				break
 			}
+
+			s = NumberRoot
+			goto reloop
+
+		case NumberRoot:
 
 			if v == '0' {
-				s = ZeroStart
+				s = Dot
+				break
+			}
+			if strings.Contains(NonZeroNumbers, string(v)) {
+				s = DigitToDot
 				break
 			}
 
-			if strings.ContainsRune(NonZeroNumbers, v) {
-				s = Digit
-				break
-			}
+			return fmt.Errorf("numberRoot not a number")
 
-			return false
-
-		case ZeroStart:
-
+		case Dot:
 			if v == '.' {
-				hasDot = true
-				s = Digit
+				s = FirstDigit
 				break
 			}
-
-			if v == 'e' || v == 'E' {
-				s = PlusMinus
-				break
-			}
-
-			return false
+			return fmt.Errorf("dot no dot")
 
 		case Digit:
+			if strings.Contains(Numbers, string(v)) {
+				break
+			}
+			// has first number
+			if v == 'E' || v == 'e' {
+				s = Exp
+				break
+			}
+
+			return fmt.Errorf("digit no digit")
+
+		case FirstDigit:
+
+			if strings.Contains(Numbers, string(v)) {
+				s = Digit
+				break
+			}
+			return fmt.Errorf("first digit no digit")
+
+		case DigitToDot:
+			if strings.Contains(Numbers, string(v)) {
+				break
+			}
 
 			if v == '.' {
-				if hasDot {
-					return false
-				}
-				hasDot = true
-				s = Digit
+				s = FirstDigit
 				break
 			}
 
-			if v == 'e' || v == 'E' {
-				s = PlusMinus
+			if v == 'E' || v == 'e' {
+				s = Exp
 				break
 			}
 
-			if strings.ContainsRune(Numbers, v) {
+			return fmt.Errorf("digitToDot wrong")
+
+		case Exp:
+			if v == '-' || v == '+' {
+				s = DigitEnd
+				break
+			}
+			if strings.Contains(Numbers, string(v)) {
+				s = DigitEnd
 				break
 			}
 
-			return false
+			return fmt.Errorf("exp wrong beginning")
+		case DigitEnd:
 
-		case PlusMinus:
-
-			if strings.ContainsRune("+-", v) {
-				s = Digit
+			if strings.Contains(Numbers, string(v)) {
 				break
 			}
-
-			if strings.ContainsRune(Numbers, v) {
-				s = Digit
-				break
-			}
-
-			return false
+			return fmt.Errorf("exp digit end no number")
 		}
 	}
 
-	return (s == Digit && strings.ContainsRune(Numbers, lastRune)) ||
-		s == ZeroStart
+	return nil
 }

@@ -251,7 +251,7 @@ func (v *ValueNoQuoteState) Next(ru rune, f *Filter) error {
 
 		// check if quotes are not needed
 		s := string(v.cval)
-		if IsNumber(s) ||
+		if IsNumber(s) == nil ||
 			s == `true` ||
 			s == `false` ||
 			s == `null` {
