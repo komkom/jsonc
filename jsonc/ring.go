@@ -9,19 +9,13 @@ type ReadRune func() (r rune, size int, err error)
 type Ring struct {
 	buf         []rune
 	readRune    ReadRune
-	minSize     int
-	maxSize     int
 	position    int
 	absPosition int
 }
 
-func NewRing(maxSize int, minSize int, readRune ReadRune) (r *Ring, err error) {
+func NewRing(readRune ReadRune) (r *Ring, err error) {
 
-	if maxSize <= minSize {
-		return nil, fmt.Errorf("maxSize(%v) <= minSize(%v)", maxSize, minSize)
-	}
-
-	r = &Ring{readRune: readRune, minSize: minSize, maxSize: maxSize}
+	r = &Ring{readRune: readRune}
 	if readRune != nil {
 		err = r.fill()
 	}
@@ -46,21 +40,13 @@ func (r *Ring) Advance() error {
 
 	if r.position+1 >= len(r.buf) {
 
-		if len(r.buf) > r.maxSize {
-
-			r.buf = r.buf[r.maxSize-r.minSize:]
-			r.position -= (r.maxSize - r.minSize)
-			if r.position < 0 {
-				panic(fmt.Errorf("unexpected error"))
-			}
-		}
-
 		err := r.fill()
 		if err != nil {
 			return err
 		}
 	}
 
+	r.absPosition += 1
 	r.position += 1
 	return nil
 }
@@ -72,7 +58,6 @@ func (r *Ring) fill() error {
 	}
 
 	r.buf = append(r.buf, ru)
-	r.absPosition += 1
 	return nil
 }
 
@@ -81,10 +66,6 @@ func (r *Ring) Peek() rune {
 }
 
 func (r *Ring) Pop() error {
-
-	if r.position == 0 && len(r.buf) == 0 {
-		return nil
-	}
 
 	if r.position == 0 {
 		return fmt.Errorf("buffer underrun")

@@ -114,7 +114,7 @@ func TestJsonParser(t *testing.T) {
 
 	data := JsonData()
 
-	ring, err := NewRing(256, 64, nil)
+	ring, err := NewRing(nil)
 	if err != nil {
 		panic(err)
 	}
@@ -203,7 +203,7 @@ func testFormattingFile(t *testing.T, path string) {
 		in := split[0]
 		expected := split[1][1:] + "\n"
 
-		ring, err := NewRing(32, 16, nil)
+		ring, err := NewRing(nil)
 		if err != nil {
 			panic(err)
 		}
@@ -229,7 +229,7 @@ func TestMultilineValue(t *testing.T) {
 	require.NoError(t, err)
 	data, err := ioutil.ReadAll(file)
 
-	ring, err := NewRing(256, 64, nil)
+	ring, err := NewRing(nil)
 	require.NoError(t, err)
 
 	f := NewFilter(ring, 256, false, " ")

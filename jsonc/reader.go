@@ -4,7 +4,7 @@ import "io"
 
 func New(r io.RuneReader, minimize bool, space string) (*Filter, error) {
 
-	ring, err := NewRing(256, 64, r.ReadRune)
+	ring, err := NewRing(r.ReadRune)
 
 	if err != nil {
 		return nil, err

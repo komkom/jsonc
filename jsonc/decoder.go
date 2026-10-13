@@ -16,7 +16,7 @@ type Options = func(dec Decoder)
 
 func NewDecoder(r io.RuneReader, opts ...Options) (*Decoder, error) {
 
-	ring, err := NewRing(256, 64, r.ReadRune)
+	ring, err := NewRing(r.ReadRune)
 	if err != nil {
 		return nil, err
 	}
