@@ -175,33 +175,27 @@ func TestComplexFmt(t *testing.T) {
 }
 
 func testFormattingFile(t *testing.T, path string) {
-
 	f, err := os.Open(path)
 	require.NoError(t, err)
 
-	d, err := ioutil.ReadAll(f)
+	d, err := io.ReadAll(f)
 	require.NoError(t, err)
 	data := string(d)
 
-	firstSplit := strings.Split(data, "###")
+	split := strings.Split(data, "###\n")
 
-	require.True(t, len(firstSplit) > 0)
+	require.True(t, len(split) > 0)
 
-	for idx, d := range firstSplit {
+	for _, raw := range split {
 
-		t.Log(`idx`, idx)
-
-		d = strings.TrimSpace(d)
-
-		if d == `` && len(firstSplit)-1 == idx {
-			break
+		if raw == "\n" {
+			continue
 		}
 
-		split := strings.Split(d, "##")
-		require.Equal(t, 2, len(split))
+		inOut := strings.Split(raw, "##\n")
 
-		in := split[0]
-		expected := split[1][1:] + "\n"
+		in := inOut[0]
+		out := inOut[1]
 
 		ring, err := NewRing(nil)
 		if err != nil {
@@ -219,7 +213,7 @@ func testFormattingFile(t *testing.T, path string) {
 
 		_, err = buf.ReadFrom(fl)
 		require.NoError(t, err)
-		require.Equal(t, expected, string(buf.Bytes()))
+		require.Equal(t, string(out), buf.String())
 	}
 }
 
