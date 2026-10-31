@@ -56,7 +56,6 @@ func (r *Ring) fill() error {
 	if err != nil {
 		return err
 	}
-
 	r.buf = append(r.buf, ru)
 	return nil
 }

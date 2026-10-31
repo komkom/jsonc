@@ -1,0 +1,75 @@
+{
+    titel: "Mein Projekt"
+    version: 12345
+    status: "aktiv"
+}
+##
+{"titel":"Mein Projekt","version":12345,"status":"aktiv"}
+###
+{
+    id: 1,name: "App"
+    wert: 500,status: "bereit"
+}
+##
+{"id":1,"name":"App","wert":500,"status":"bereit"}
+###
+{
+    tags: ["go", "json", "parser"]
+    codes: [10, 20, 30]
+}
+##
+{"tags":["go","json","parser"],"codes":[10,20,30]}
+###
+{
+    tags: ["go", "json", "parser"]
+    codes: [10, 20, 30]
+}
+##
+{"tags":["go","json","parser"],"codes":[10,20,30]}
+###
+{
+    name: "GoParser Application"
+    version: 1
+    module: ["main", "lexer", "parser" /* kernkomponenten */]
+    speed: 99999,mode: "fast" /* performance einstellungen */
+}
+##
+{"name":"GoParser Application","version":1,"module":["main","lexer","parser"],"speed":99999,"mode":"fast"}
+###
+{
+    array: ["a" b 123]
+}
+##
+{"array":["a","b",123]}
+###
+{
+    mix: [1 /* start */ 2 /* mitte */, 3 /* ende */]
+}
+##
+{"mix":[1,2,3]}
+###
+{
+    leer_obj: {}
+    leer_arr: []
+}
+##
+{"leer_obj":{},"leer_arr":[]}
+###
+{
+    schluessel: "Wert mit /* kommentar-zeichen im string */"
+}
+##
+{"schluessel":"Wert mit /* kommentar-zeichen im string */"}
+###
+{
+    /*comment*/key:value
+}
+##
+{"key":"value"}
+###
+{
+    projekt_näme: "Mein Go Parser"
+    status: "erfolgreich"
+}
+##
+{"projekt_näme":"Mein Go Parser","status":"erfolgreich"}

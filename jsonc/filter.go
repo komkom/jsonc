@@ -203,7 +203,7 @@ func (o *KeyNoQuoteState) Type() TokenType {
 func (k *KeyNoQuoteState) Next(ru rune, f *Filter) error {
 
 	if !k.notFirst {
-		if !unicode.IsLetter(ru) && !unicode.IsDigit(ru) {
+		if !unicode.IsPrint(ru) {
 			return Errorf("invalid key", f.ring.Position())
 		}
 	}
@@ -224,7 +224,7 @@ func (k *KeyNoQuoteState) Next(ru rune, f *Filter) error {
 		return ErrDontAdvance
 	}
 
-	if !unicode.IsLetter(ru) && !unicode.IsDigit(ru) {
+	if !unicode.IsPrint(ru) {
 		return Errorf("invalid key", f.ring.Position())
 	}
 
