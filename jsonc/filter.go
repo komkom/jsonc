@@ -931,14 +931,16 @@ func (f *Filter) pushSpaces(c int) {
 
 func (f *Filter) pushOut(r rune) {
 	f.lastOut = r
-	f.outbuf = append(f.outbuf, byte(r))
+	f.outbuf = append(f.outbuf, []byte(string(r))...)
 }
 
 func (f *Filter) pushRunes(runes []rune) {
 	if len(runes) > 0 {
 		f.lastOut = runes[len(runes)-1]
 	}
-	f.outbuf = append(f.outbuf, []byte(string(runes))...)
+	for _, ru := range runes {
+		f.outbuf = append(f.outbuf, []byte(string(ru))...)
+	}
 }
 
 func (f *Filter) pushOutMult(t int, max int, r rune) {
