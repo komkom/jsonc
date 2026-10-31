@@ -73,3 +73,10 @@
 }
 ##
 {"projekt_näme":"Mein Go Parser","status":"erfolgreich"}
+###
+{
+    porojekt_näme: "Parser"
+    🚀_speed: 999
+}
+##
+{"projekt_näme":"Parser","🚀_speed":999}

@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -45,17 +44,4 @@ func TestInOut(t *testing.T) {
 
 		assert.Equal(t, out, res.String())
 	}
-}
-
-func TestUTF8(t *testing.T) {
-
-	file, err := os.Open(`test-utf8.txt`)
-	require.NoError(t, err)
-	raw, err := io.ReadAll(file)
-	require.NoError(t, err)
-	data := string(raw)
-
-	str := strings.NewReader(data)
-	ru, size, err := str.ReadRune()
-	fmt.Printf("str %v ru %v size %v err %v", string(ru), ru, size, err)
 }
