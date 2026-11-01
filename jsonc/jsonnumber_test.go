@@ -124,6 +124,14 @@ func TestNumbers(t *testing.T) {
 			ShouldBeValid: true,
 			N:             `0`,
 		},
+		{
+			ShouldBeValid: true,
+			N:             `1e5`,
+		},
+		{
+			ShouldBeValid: true,
+			N:             `-0.456`,
+		},
 	}
 
 	for _, nt := range numberTests {

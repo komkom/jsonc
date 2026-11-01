@@ -260,18 +260,16 @@ func (v *ValueNoQuoteState) Next(ru rune, f *Filter) error {
 			return ErrDontAdvance
 		}
 
-		if !unicode.IsLetter(([]rune(s))[0]) {
-			return Errorf("invalid identifier", f.ring.Position())
-		}
-
 		if f.format {
 			f.pushRunes(v.cval)
 			return ErrDontAdvance
 		}
 
+		out := doubleBackslashes(v.cval)
+
 		// quote the value
 		f.pushOut('"')
-		f.pushRunes(v.cval)
+		f.pushRunes(out)
 		f.pushOut('"')
 
 		return ErrDontAdvance
@@ -281,16 +279,30 @@ func (v *ValueNoQuoteState) Next(ru rune, f *Filter) error {
 		return renderValue()
 	}
 
-	if !unicode.IsLetter(ru) && !unicode.IsDigit(ru) && ru != '.' && ru != '+' {
-		return Errorf("invalid identifier", f.ring.Position())
-	}
-
-	if ru == '\\' {
+	if !unicode.IsPrint(ru) {
 		return Errorf("invalid identifier", f.ring.Position())
 	}
 
 	v.cval = append(v.cval, ru)
+
 	return nil
+}
+
+func doubleBackslashes(input []rune) []rune {
+	// Pre-allocate memory with a bit of extra space for performance
+	result := make([]rune, 0, len(input)+5)
+
+	for _, r := range input {
+		// If the rune is a backslash, append it twice
+		if r == '\\' {
+			result = append(result, '\\', '\\')
+		} else {
+			// Otherwise, just append the original rune
+			result = append(result, r)
+		}
+	}
+
+	return result
 }
 
 var (

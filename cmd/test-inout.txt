@@ -1,3 +1,7 @@
+[ -4 ]
+##
+[-4]
+###
 {
     titel: "Mein Projekt"
     version: 12345
@@ -75,8 +79,211 @@
 {"projekt_näme":"Mein Go Parser","status":"erfolgreich"}
 ###
 {
-    porojekt_näme: "Parser"
+    projekt_näme: "Parser"
     🚀_speed: 999
 }
 ##
 {"projekt_näme":"Parser","🚀_speed":999}
+###
+{
+    daten: ["a" "b"/*kommentar am rand*/]
+}
+##
+{"daten":["a","b"]}
+###
+{
+    array: ["a" b 123]
+}
+##
+{"array":["a","b",123]}
+###
+{
+    schlüssel_mit_ö_und_ü: "Umlaute im Key"
+}
+##
+{"schlüssel_mit_ö_und_ü":"Umlaute im Key"}
+###
+{
+    keine_kommas: [
+        "erster" /* kommentar */
+        "zweiter"
+        33333 /* noch ein kommentar */
+    ]
+}
+##
+{"keine_kommas":["erster","zweiter",33333]}
+###
+{
+    wahr: true,falsch: false
+    nichts: null
+}
+##
+{"wahr":true,"falsch":false,"nichts":null}
+###
+{
+    kommentar_direkt_am_key/*wichtig*/: "kein leerzeichen"
+}
+##
+{"kommentar_direkt_am_key":"kein leerzeichen"}
+###
+{
+    geschachtelt: {
+        tief: [ { id: 99 } ]
+    }
+}
+##
+{"geschachtelt":{"tief":[{"id":99}]}}
+###
+{
+    text_mit_escapes: "Zeile 1\nZeile 2\tTab"
+}
+##
+{"text_mit_escapes":"Zeile 1\nZeile 2\tTab"}
+###
+{
+    kompakt:[1,2,3],nahtlos:{a:1}
+}
+##
+{"kompakt":[1,2,3],"nahtlos":{"a":1}}
+###
+{
+    array_in_array: [[1,2/*innen*/],[3,4]]
+}
+##
+{"array_in_array":[[1,2],[3,4]]}
+###
+{
+    schlüssel.mit.punkten: "erlaubt?"
+    schlüssel$geld: 100
+}
+##
+{"schlüssel.mit.punkten":"erlaubt?","schlüssel$geld":100}
+###
+{
+    pfad: "/usr/local/bin/*" /* Sonderzeichen im String */
+}
+##
+{"pfad":"/usr/local/bin/*"}
+###
+{
+    wurst_käse_szenario: "🇨🇭"
+}
+##
+{"wurst_käse_szenario":"🇨🇭"}
+###
+{
+    großer_kommentarblock: [
+        1
+        /* 
+           Zeile 1 des Kommentars
+           Zeile 2 mit Sonderzeichen: @#$%
+           Zeile 3
+        */
+        2
+    ]
+}
+##
+{"großer_kommentarblock":[1,2]}
+###
+{
+    wert_mit_doppelpunkt: "http://localhost:8080"
+}
+##
+{"wert_mit_doppelpunkt":"http://localhost:8080"}
+###
+{
+    nahtloses_array:[1,2,3]
+}
+##
+{"nahtloses_array":[1,2,3]}
+###
+{
+    kommentar_am_anfang: /* Start */ {
+        a: 1
+    }
+}
+##
+{"kommentar_am_anfang":{"a":1}}
+###
+{
+    schlüssel_mit_zahlen_am_ende12345: "gültig"
+}
+##
+{"schlüssel_mit_zahlen_am_ende12345":"gültig"}
+###
+{
+    array_mit_vielen_kommentaren: [/*1*//*2*/"a"/*3*/,/*4*/"b"/*5*/]
+}
+##
+{"array_mit_vielen_kommentaren":["a","b"]}
+###
+{
+    sehr_grosse_zahl: 9223372036854775807
+    sehr_kleine_zahl: -9223372036854775808
+}
+##
+{"sehr_grosse_zahl":9223372036854775807,"sehr_kleine_zahl":-9223372036854775808}
+###
+{
+    whitespace_marathon:                     "viele leerzeichen vor dem wert"
+}
+##
+{"whitespace_marathon":"viele leerzeichen vor dem wert"}
+###
+{
+    schlüssel_mit_anführungszeichen_innen: "Erlaubt \"Wort\" im String"
+}
+##
+{"schlüssel_mit_anführungszeichen_innen":"Erlaubt \"Wort\" im String"}
+###
+{
+    kommentar_nach_komma: 11111, /* kommentar direkt nach komma */ e: 22222
+}
+##
+{"kommentar_nach_komma":11111,"e":22222}
+###
+{
+    // Fall 1: Echte Datentypen vs. Strings (Keywords als Text)
+    wahrheitswert: true
+    text_version: "true"
+    zahl: 1050
+    text_zahl: "1050"
+    null_wert: null
+    text_null: unquoted_null
+}
+##
+{"wahrheitswert":true,"text_version":"true","zahl":1050,"text_zahl":"1050","null_wert":null,"text_null":"unquoted_null"}
+###
+{
+    // Fall 3: Strings, die wie Zahlen beginnen, aber Text sind
+    version: 1.0.0-beta
+    seriennummer: 45A79X
+    telefon: +41441234567
+}
+##
+{"version":"1.0.0-beta","seriennummer":"45A79X","telefon":"+41441234567"}
+###
+{
+    // Fall 4: Leere Werte und Whitespace-Grenzfälle
+    leerer_string: ""
+    whitespace_string: "   "
+    array_leer: []
+}
+##
+{"leerer_string":"","whitespace_string":"   ","array_leer":[]}
+###
+{
+    // Ein unquoteter String, der Backslashes, unescaped Quotes, 
+    // Tabs und Zeilenumbrüche direkt im Text enthält.
+    pfad_und_text: C:\Users\Neu\tabelle.txt
+}
+##
+{"pfad_und_text":"C:\\Users\\Neu\\tabelle.txt"}
+###
+{hex_value: 0x1A3F}
+##
+{"hex_value":"0x1A3F"}
+###
+[\u1234]
+##
+["\\u1234"]
